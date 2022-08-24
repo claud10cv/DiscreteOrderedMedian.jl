@@ -1,0 +1,4 @@
+name = "DiscreteOrderedMedian"
+uuid = "749eb255-e7f0-474c-bf5d-cdfd6b01954b"
+authors = ["ccontard "]
+version = "0.1.0"
