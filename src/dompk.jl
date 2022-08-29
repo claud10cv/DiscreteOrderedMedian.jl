@@ -16,8 +16,10 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
         r = floor(Int64, (lb + ub) / 2)
         cov, map, numcov = build_coverage(data, bbnode, r)
         # println("there are $numcov rows covered already") 
-        # println("map = $map")
         sol = setcover(cov, k - numcov, data.p - nopen)
+        # println("p = $(data.p - nopen), k = $(k - numcov)")
+        # println("map = $map")
+        # println("sol = $sol")
         if !isempty(sol)
             # if k == nrows
             #     println("feasible r = $r")
@@ -84,6 +86,19 @@ function build_coverage(data::DOMPData, bbnode::BbNode, r::Int64)::Tuple{Matrix{
     end
     jinds = setdiff(collect(1 : ncols), [b.j for b in bbnode.branches])
     iinds = [i for i in 1 : nrows if !iscov[i]]
-    newcov = cov[iinds, jinds]
-    return newcov, jinds, sum(iscov)
+    dom = falses(ncols)
+    for j in jinds, j2 in jinds
+        if j == j2 continue end
+        if dom[j] continue end
+        if dom[j2] continue end
+        diff = cov[iinds, j2] .& .!cov[iinds, j]
+        if sum(diff) == 0
+            # println("found dominance")
+            dom[j2] = true
+        end
+    end
+    dom = [j for j in 1 : ncols if dom[j]]
+    jinds = setdiff(jinds, dom)
+    cov = cov[iinds, jinds]
+    return cov, jinds, sum(iscov)
 end

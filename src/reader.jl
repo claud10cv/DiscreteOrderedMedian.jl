@@ -1,4 +1,4 @@
-function read_deleplanque(filename)::DOMPData
+function read_deleplanque(filename::String)::DOMPData
     p = n = 0
     D = []
     lambda = []
