@@ -24,7 +24,7 @@ function generate_euclidean(n::Int64, p::Int64, itype::Symbol)::DOMPData
 end
 
 function generate_rand(n::Int64, p::Int64, itype::Symbol)::DOMPData
-    lambda = rand(0 : 1000, n)
+    lambda = rand(0 : 100, n)
     if itype == :pcentre
         lambda = zeros(Int64, n)
         lambda[end] = 1
@@ -37,6 +37,7 @@ function generate_rand(n::Int64, p::Int64, itype::Symbol)::DOMPData
         for j in ceil(Int64, n / 2) : n
             lambda[j] = 1
         end
+    elseif itype == :random
     end
     D = rand(10000 : 100000, n, n)
     DOMPData(D, p, lambda)

@@ -16,6 +16,9 @@ function bnb(data::DOMPData)::Tuple{Int64, Int64, Tuple{Vector{Float64}, Vector{
     global_lb = root.lb
     global_xlb = root.xlb
     global_xub = root.xub
+    xls, lsub = local_search(data, root.xk)
+    global_ub = lsub
+    global_xub = xls
     it = 0
     root_gap = ceil(100 * (global_ub - global_lb) / global_ub * 100) / 100
     t1 = time_ns()
@@ -33,10 +36,9 @@ function bnb(data::DOMPData)::Tuple{Int64, Int64, Tuple{Vector{Float64}, Vector{
         elapsed = ceil(100 * (t1 - t0) * 1e-9) / 100
         if bbnode.lb >= global_ub continue end
         it += 1
-        # println("processing node $bbnode")
-        # create two branches using the most fractional criterion
+        # find the most fractional variable
         # val, j = find_most_fractional(bbnode.xlb...)
-        # val, j = strong_branching(data, bbnode, bbnode.xlb...)
+        # find the best branch by strong branching
         pcosts = strong_branching(data, bbnode, bbnode.xlb...)
         # println(pcosts[1])
         j = pcosts[1].i
@@ -51,10 +53,11 @@ function bnb(data::DOMPData)::Tuple{Int64, Int64, Tuple{Vector{Float64}, Vector{
         right_child = BbNode(right_branch, 0, 0, ([], []), [], [Int64[] for k in 1 : nrows], deepcopy(bbnode.ropt))
         children = [left_child, right_child]
         # solve children
+        # println("processing children")
         for child in children
             domp_lb!(data, child, bbnode, global_xub)
+            # println("child bound = $(child.lb)")
             @assert(child.lb >= bbnode.lb, ("bound discrepancy of $(child.lb - bbnode.lb)"))
-            # println("created child with bound $(child.lb)")
             if child.ub < global_ub
                 global_ub = child.ub
                 global_xub = child.xub
@@ -62,7 +65,6 @@ function bnb(data::DOMPData)::Tuple{Int64, Int64, Tuple{Vector{Float64}, Vector{
             if child.lb < global_ub
                 enqueue!(queue, child => child.lb)
             end
-            # println("created and solved child $child")
         end
         println("\t$it\t$global_lb\t\t$global_ub\t\t$gap\t\t$elapsed\t\t$(length(queue))")
     end

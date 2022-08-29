@@ -8,22 +8,11 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
     for j in open
         x[j] = 1
     end
-    # if k == nrows
-    #     println("starting with lb = $lb and ub = $ub")
-    # end
-    # println("there are $nopen open facilities already")
     while lb < ub
         r = floor(Int64, (lb + ub) / 2)
         cov, map, numcov = build_coverage(data, bbnode, r)
-        # println("there are $numcov rows covered already") 
         sol = setcover(cov, k - numcov, data.p - nopen)
-        # println("p = $(data.p - nopen), k = $(k - numcov)")
-        # println("map = $map")
-        # println("sol = $sol")
         if !isempty(sol)
-            # if k == nrows
-            #     println("feasible r = $r")
-            # end
             ub = r
             for j in 1 : ncols
                 y[j] = 0
@@ -32,9 +21,6 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
                 y[j] = 1
             end
         else
-            # if k == nrows
-            #     println("infeasible r = $r")
-            # end
             lb = r + 1
         end
     end

@@ -21,10 +21,10 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
             val = bbnode.ropt[k] = parent.ropt[k]
             bbnode.xk[k] = deepcopy(parent.xk[k])
             # bbnode.ropt[k] = parent.ropt[k]
-        elseif data.lambda[k] > 0  
+        elseif data.lambda[k] != 0  
             val, bbnode.xk[k] = dompk_pos(data, bbnode, k, bbnode.ropt[k], k == nrows ? maxd : bbnode.ropt[k + 1])
-        elseif data.lambda[k] < 0
-            val, bbnode.xk[k] = dompk_neg(data, bbnode, k, mind, bbnode.ropt[k])
+        # elseif data.lambda[k] < 0
+            # val, bbnode.xk[k] = dompk_neg(data, bbnode, k, mind, bbnode.ropt[k])
         else
             if k == nrows
                 bbnode.ropt[k] = maxd

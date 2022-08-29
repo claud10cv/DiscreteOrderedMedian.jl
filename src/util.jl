@@ -71,6 +71,15 @@ function modify_lambda(data::DOMPData, ltype::Symbol)::DOMPData
             else lambda[i] = 0
             end
         end
+    elseif ltype == :T9 # (-1, 0,...,0, 1)
+        lambda[1] = -1
+        lambda[end] = 1
+    elseif ltype == :T10 #(-1, a,...,a, 1)
+        lambda[1] = -4
+        lambda[end] = 4
+        for i in 2 : n - 1
+            lambda[i] = 1
+        end
     end
     return DOMPData(D, p, lambda)
 end
