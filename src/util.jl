@@ -28,6 +28,7 @@ function modify_lambda(data::DOMPData, ltype::Symbol)::DOMPData
     p = data.p
     lambda = zeros(Int64, n)
     if ltype == :T0
+        lambda = data.lambda
         # do nothing
     elseif ltype == :T1 #median
         for i in 1 : n
