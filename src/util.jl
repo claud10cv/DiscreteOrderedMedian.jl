@@ -27,7 +27,9 @@ function modify_lambda(data::DOMPData, ltype::Symbol)::DOMPData
     n = size(D, 1)
     p = data.p
     lambda = zeros(Int64, n)
-    if ltype == :T1 #median
+    if ltype == :T0
+        # do nothing
+    elseif ltype == :T1 #median
         for i in 1 : n
             lambda[i] = 1
         end
