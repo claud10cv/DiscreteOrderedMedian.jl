@@ -71,8 +71,8 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
     if isempty(queue)
         global_lb = global_ub
     else
-        bbnode = peek(queue)
-        global_lb = bbnode.lb
+        bbnode, bestbound = peek(queue)
+        global_lb = bestbound
     end 
     it += 1
     t1 = time_ns()
