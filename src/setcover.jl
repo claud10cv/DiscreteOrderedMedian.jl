@@ -9,7 +9,8 @@ function setcover(coverage::Matrix{Bool}, k::Int64, p::Int64)::Vector{Int64}
     m = JuMP.Model(optimizer_with_attributes(CPLEX.Optimizer, 
         "CPXPARAM_MIP_Tolerances_UpperCutoff" => p + 1e-5, 
         "CPXPARAM_MIP_Limits_LowerObjStop" => p + 1e-5,
-        "CPXPARAM_ScreenOutput" => 0))
+        "CPXPARAM_ScreenOutput" => 0,
+        "CPXPARAM_Threads" => 1))
     # m = JuMP.Model(optimizer_with_attributes(Gurobi.Optimizer, 
     #     "Cutoff" => p + 1e-5, 
     #     "BestObjStop" => p + 1e-5,
