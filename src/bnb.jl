@@ -1,5 +1,5 @@
 using DataStructures
-function bnb(data::DOMPData)::Tuple{Int64, Int64, Tuple{Vector{Float64}, Vector{Float64}}, Vector{Int64}}
+function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vector{Float64}, Vector{Float64}}, Vector{Int64}}
     println("ITERATION\tBEST BOUND\tBKS\t\tGAP(%)\t\tT (s)\t\tNODES LEFT")
     t0 = time_ns()
     nrows = size(data.D, 1)
@@ -27,13 +27,11 @@ function bnb(data::DOMPData)::Tuple{Int64, Int64, Tuple{Vector{Float64}, Vector{
     push!(queue, root => root.lb)
     println("\t$it\t$global_lb\t\t$global_ub\t\t$root_gap\t\t$elapsed\t\t$(length(queue))")
     if root.lb >= root.ub return root.lb, root.ub, root.xlb, root.xub end
-    while !isempty(queue)
+    while !isempty(queue) && elapsed < time_limit
         bbnode = dequeue!(queue)
         global_lb = bbnode.lb
         global_xlb = bbnode.xlb
         gap = ceil(((global_ub - global_lb) / global_ub * 100) * 100) / 100
-        t1 = time_ns()
-        elapsed = ceil(100 * (t1 - t0) * 1e-9) / 100
         if bbnode.lb >= global_ub continue end
         it += 1
         # find the most fractional variable
@@ -66,6 +64,8 @@ function bnb(data::DOMPData)::Tuple{Int64, Int64, Tuple{Vector{Float64}, Vector{
                 enqueue!(queue, child => child.lb)
             end
         end
+        t1 = time_ns()
+        elapsed = ceil(100 * (t1 - t0) * 1e-9) / 100
         println("\t$it\t$global_lb\t\t$global_ub\t\t$gap\t\t$elapsed\t\t$(length(queue))")
     end
     if isempty(queue)
