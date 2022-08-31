@@ -4,7 +4,12 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
     t0 = time_ns()
     nrows = size(data.D, 1)
     ncols = size(data.D, 2)
+    maxd = maximum(data.D)
+    mind = minimum(data.D)
     root = BbNode([], 0, 0, (zeros(ncols), zeros(ncols)), zeros(Int64, ncols), [Int64[] for k in 1 : nrows], zeros(Int64, nrows))
+    for i in 1 : nrows
+        root.ropt[i] = data.lambda[i] > 0 ? mind : (data.lambda[i] < 0 ? maxd : 0)
+    end
     global_xub = zeros(Int64, ncols)
     for k in 1 : data.p
         global_xub[k] = 1
@@ -77,7 +82,8 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
     it += 1
     t1 = time_ns()
     elapsed = ceil(100 * (t1 - t0) * 1e-9) / 100
-    println("\t$it\t$global_ub\t\t$global_ub\t\t0.0\t\t$elapsed\t\t0")
+    gap = ceil(Int64, 100 * (global_ub - global_lb) / global_ub * 100) / 100
+    println("\t$it\t$global_lb\t\t$global_ub\t\t$(gap)\t\t$elapsed\t\t$(length(queue))")
     return global_lb, global_ub, global_xlb, global_xub
 end
         

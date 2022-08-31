@@ -27,7 +27,7 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
     return ub, (x + y)
 end
 
-function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int64)::Int64
+function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int64)::Tuple{Int64, Vector{Int64}}
     open = [b.j for b in bbnode.branches if b.sense == 'G' && b.bound == 1]
     nopen = length(open)
     nrows = size(data.D, 1)
@@ -38,25 +38,29 @@ function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
         x[j] = 1
     end
     while lb < ub
+        # println("lb = $lb, ub = $ub")
         r = ceil(Int64, (lb + ub) / 2)
-        cov, map, numcov = build_coverage(data, bbnode, r)
-        sol = setcover(cov, k - numcov, data.p - nopen)
+        cov, map, numcov = build_coverage(data, bbnode, r, false)
+        sol = setpacking(cov, k - 1 - numcov, data.p - nopen)
         if !isempty(sol)
+            # println("feasible r = $r")
+            # println("sol = $sol")
             lb = r
-        else
-            ub = r - 1
             for j in 1 : ncols
                 y[j] = 0
             end
             for j in map[sol]
                 y[j] = 1
             end
+        else
+            # println("infeasible r = $r")
+            ub = r - 1
         end
     end
-    return lb, (x + y)
+    return lb + 1, (x + y)
 end
 
-function build_coverage(data::DOMPData, bbnode::BbNode, r::Int64)::Tuple{Matrix{Bool}, Vector{Int64}, Int64}
+function build_coverage(data::DOMPData, bbnode::BbNode, r::Int64, applydom::Bool = true)::Tuple{Matrix{Bool}, Vector{Int64}, Int64}
     nrows = size(data.D, 1)
     ncols = size(data.D, 2)
     cov = falses(nrows, ncols)
@@ -72,19 +76,21 @@ function build_coverage(data::DOMPData, bbnode::BbNode, r::Int64)::Tuple{Matrix{
     end
     jinds = setdiff(collect(1 : ncols), [b.j for b in bbnode.branches])
     iinds = [i for i in 1 : nrows if !iscov[i]]
-    dom = falses(ncols)
-    for j in jinds, j2 in jinds
-        if j == j2 continue end
-        if dom[j] continue end
-        if dom[j2] continue end
-        diff = cov[iinds, j2] .& .!cov[iinds, j]
-        if sum(diff) == 0
-            # println("found dominance")
-            dom[j2] = true
+    if applydom
+        dom = falses(ncols)
+        for j in jinds, j2 in jinds
+            if j == j2 continue end
+            if dom[j] continue end
+            if dom[j2] continue end
+            diff = cov[iinds, j2] .& .!cov[iinds, j]
+            if sum(diff) == 0
+                # println("found dominance")
+                dom[j2] = true
+            end
         end
+        dom = [j for j in 1 : ncols if dom[j]]
+        jinds = setdiff(jinds, dom)
     end
-    dom = [j for j in 1 : ncols if dom[j]]
-    jinds = setdiff(jinds, dom)
     cov = cov[iinds, jinds]
     return cov, jinds, sum(iscov)
 end
