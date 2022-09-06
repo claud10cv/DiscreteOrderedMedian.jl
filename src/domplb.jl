@@ -11,6 +11,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     xlb_all = zeros(Int64, ncols)
     xlb_ub = zeros(Int64, ncols)
     xub = zeros(Int64, ncols)
+    dk = [zeros(Int64, nrows) for i in 1 : nrows]
     # resize!(bbnode.xk, nrows)
     for k in nrows : -1 : 1
         if data.lambda[k] != 0 && !isnothing(parent) && can_recycle_solution(bbnode, parent.xk[k])
@@ -20,18 +21,43 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
             # @assert(val == d[k], ("distances do not coincide, with val = $val, d = $(d[k]) and parent.xk = $(parent.xk[k])"))
             val = bbnode.ropt[k] = parent.ropt[k]
             bbnode.xk[k] = deepcopy(parent.xk[k])
+            dk[k] = compute_sorted_distances(data, bbnode.xk[k])
             # bbnode.ropt[k] = parent.ropt[k]
         elseif data.lambda[k] > 0
             valub = maxd
+            xubk = Int64[]
             for l in k + 1 : nrows
                 if data.lambda[l] > 0
-                    valub = bbnode.ropt[l]
-                    break
+                    if dk[l][k] < valub
+                        valub = dk[l][k]
+                        xubk = bbnode.xk[l]
+                    end
                 end
             end
-            val, bbnode.xk[k] = dompk_pos(data, bbnode, k, bbnode.ropt[k], valub)
+            @assert(bbnode.ropt[k] <= valub, ("bounds inconsistent, $(bbnode.ropt[k]), $(valub)"))
+            val, solk = dompk_pos(data, bbnode, k, bbnode.ropt[k], valub, xubk)
+            if val == valub
+                solk = xubk
+            end
+            bbnode.xk[k] = solk
+            dk[k] = compute_sorted_distances(data, bbnode.xk[k])
         elseif data.lambda[k] < 0
-            val, bbnode.xk[k] = dompk_neg(data, bbnode, k, mind - 2, bbnode.ropt[k])
+            vallb = mind
+            xlbk = Int64[]
+            for l in k + 1 : nrows
+                if data.lambda[l] < 0
+                    if dk[l][k] > vallb
+                        vallb = dk[l][k]
+                        xlbk = bbnode.xk[l]
+                    end
+                end
+            end
+            val, solk = dompk_neg(data, bbnode, k, vallb, bbnode.ropt[k], xlb[k])
+            if val == valub
+                solk = xlbk
+            end
+            bbnode.xk[k] = solk
+            dk[k] = compute_sorted_distances(data, bbnode.xk[k])    
             @assert(val <= bbnode.ropt[k], ("discrepancy in computing val for lambda < 0, child = $val, parent = $(bbnode.ropt[k])"))
         else
             if k == nrows

@@ -1,4 +1,5 @@
-function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int64)::Tuple{Int64, Vector{Int64}}
+function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int64, xub::Vector{Int64})::Tuple{Int64, Vector{Int64}}
+    if (lb == ub) return ub, deepcopy(xub) end
     nrows = size(data.D, 1)
     ncols = size(data.D, 2)
     open = [b.j for b in bbnode.branches if b.sense == 'G' && b.bound == 1]
@@ -20,14 +21,16 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
             for j in map[sol]
                 y[j] = 1
             end
+            xub = x + y
         else
             lb = r + 1
         end
     end
-    return ub, (x + y)
+    return ub, deepcopy(xub)
 end
 
-function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int64)::Tuple{Int64, Vector{Int64}}
+function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int64, xlb::Vector{Int64})::Tuple{Int64, Vector{Int64}}
+    if (lb == ub) return lb, deepcopy(xlb) end
     open = [b.j for b in bbnode.branches if b.sense == 'G' && b.bound == 1]
     nopen = length(open)
     nrows = size(data.D, 1)
@@ -52,12 +55,13 @@ function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
             for j in map[sol]
                 y[j] = 1
             end
+            xlb = x + y
         else
             # println("infeasible r = $r")
             ub = r - 1
         end
     end
-    return lb + 1, (x + y)
+    return lb + 1, deepcopy(xlb)
 end
 
 function build_coverage(data::DOMPData, bbnode::BbNode, r::Int64, applydom::Bool = true)::Tuple{Matrix{Bool}, Vector{Int64}, Int64}
