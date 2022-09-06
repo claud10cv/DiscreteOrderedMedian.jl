@@ -36,7 +36,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
             end
             @assert(bbnode.ropt[k] <= valub, ("bounds inconsistent, $(bbnode.ropt[k]), $(valub)"))
             val, solk = dompk_pos(data, bbnode, k, bbnode.ropt[k], valub, xubk)
-            if val == valub
+            if val == valub && !isempty(xubk)
                 solk = xubk
             end
             bbnode.xk[k] = solk
@@ -53,7 +53,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
                 end
             end
             val, solk = dompk_neg(data, bbnode, k, vallb, bbnode.ropt[k], xlb[k])
-            if val == valub
+            if val == vallb && !isempty(xlbk)
                 solk = xlbk
             end
             bbnode.xk[k] = solk
