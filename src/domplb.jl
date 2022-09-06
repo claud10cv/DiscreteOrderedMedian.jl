@@ -24,7 +24,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
             dk[k] = compute_sorted_distances(data, bbnode.xk[k])
             # bbnode.ropt[k] = parent.ropt[k]
         elseif data.lambda[k] > 0
-            valub = maxd
+            valub = maxd + 1
             xubk = Int64[]
             for l in k + 1 : nrows
                 if data.lambda[l] > 0
@@ -42,7 +42,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
             bbnode.xk[k] = solk
             dk[k] = compute_sorted_distances(data, bbnode.xk[k])
         elseif data.lambda[k] < 0
-            vallb = mind
+            vallb = mind - 1
             xlbk = Int64[]
             for l in k + 1 : nrows
                 if data.lambda[l] < 0
