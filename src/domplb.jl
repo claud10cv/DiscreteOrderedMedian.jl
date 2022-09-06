@@ -39,6 +39,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
             if val == valub && !isempty(xubk)
                 solk = xubk
             end
+            @assert(!isempty(solk), ("empty solution vector!"))
             bbnode.xk[k] = solk
             dk[k] = compute_sorted_distances(data, bbnode.xk[k])
         elseif data.lambda[k] < 0
@@ -56,6 +57,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
             if val == vallb && !isempty(xlbk)
                 solk = xlbk
             end
+            @assert(!isempty(solk), ("empty solution vector!"))
             bbnode.xk[k] = solk
             dk[k] = compute_sorted_distances(data, bbnode.xk[k])    
             @assert(val <= bbnode.ropt[k], ("discrepancy in computing val for lambda < 0, child = $val, parent = $(bbnode.ropt[k])"))

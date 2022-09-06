@@ -9,6 +9,12 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
     for j in open
         x[j] = 1
     end
+    xub = deepcopy(x)
+    for i in 1 : ncols
+        if sum(xub) >= data.p break
+        else xub[i] = 1
+        end
+    end    
     while lb < ub
         r = floor(Int64, (lb + ub) / 2)
         cov, map, numcov = build_coverage(data, bbnode, r)
@@ -26,7 +32,7 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
             lb = r + 1
         end
     end
-    return ub, deepcopy(xub)
+    return ub, xub
 end
 
 function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int64, xlb::Vector{Int64})::Tuple{Int64, Vector{Int64}}
@@ -40,6 +46,12 @@ function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
     for j in open
         x[j] = 1
     end
+    xlb = deepcopy(x)
+    for i in 1 : ncols
+        if sum(xlb) >= data.p break
+        else xlb[i] = 1
+        end
+    end    
     while lb < ub
         # println("lb = $lb, ub = $ub")
         r = ceil(Int64, (lb + ub) / 2)
@@ -61,7 +73,7 @@ function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
             ub = r - 1
         end
     end
-    return lb + 1, deepcopy(xlb)
+    return lb + 1, xlb
 end
 
 function build_coverage(data::DOMPData, bbnode::BbNode, r::Int64, applydom::Bool = true)::Tuple{Matrix{Bool}, Vector{Int64}, Int64}
