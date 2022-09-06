@@ -53,13 +53,15 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
                     end
                 end
             end
-            val, solk = dompk_neg(data, bbnode, k, vallb, bbnode.ropt[k], xlbk)
+            val, solk = dompk_neg(data, bbnode, k, vallb - 1, bbnode.ropt[k] - 1, xlbk)
             if val == vallb && !isempty(xlbk)
+                # println("recycling solution")
                 solk = xlbk
             end
             @assert(!isempty(solk), ("empty solution vector!"))
             bbnode.xk[k] = solk
-            dk[k] = compute_sorted_distances(data, bbnode.xk[k])    
+            dk[k] = compute_sorted_distances(data, bbnode.xk[k])
+            # println("solution of value $val")   
             @assert(val <= bbnode.ropt[k], ("discrepancy in computing val for lambda < 0, child = $val, parent = $(bbnode.ropt[k])"))
         else
             if k == nrows

@@ -36,7 +36,7 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
 end
 
 function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int64, xlb::Vector{Int64})::Tuple{Int64, Vector{Int64}}
-    if (lb == ub) return lb, deepcopy(xlb) end
+    if (lb == ub) return lb + 1, deepcopy(xlb) end
     open = [b.j for b in bbnode.branches if b.sense == 'G' && b.bound == 1]
     nopen = length(open)
     nrows = size(data.D, 1)
