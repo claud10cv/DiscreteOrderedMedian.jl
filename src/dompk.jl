@@ -3,18 +3,25 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
     nrows = size(data.D, 1)
     ncols = size(data.D, 2)
     open = [b.j for b in bbnode.branches if b.sense == 'G' && b.bound == 1]
+    closed = [b.j for b in bbnode.branches if b.sense == 'L' && b.bound == 0]
     nopen = length(open)
+    nclosed = length(closed)
     x = zeros(Int64, ncols)
     y = zeros(Int64, ncols)
     for j in open
         x[j] = 1
     end
-    xub = deepcopy(x)
+    newxub = deepcopy(x)
     for i in 1 : ncols
-        if sum(xub) >= data.p break
-        else xub[i] = 1
+        if sum(newxub) >= data.p break
+        elseif !in(i, closed) newxub[i] = 1
         end
-    end    
+    end 
+    dub = compute_sorted_distances(data, newxub)  
+    if dub[k] < ub
+        ub = dub[k]
+        xub = newxub
+    end
     while lb < ub
         r = floor(Int64, (lb + ub) / 2)
         cov, map, numcov = build_coverage(data, bbnode, r)
@@ -36,31 +43,42 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
 end
 
 function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int64, xlb::Vector{Int64})::Tuple{Int64, Vector{Int64}}
-    if (lb == ub) return lb + 1, deepcopy(xlb) end
-    open = [b.j for b in bbnode.branches if b.sense == 'G' && b.bound == 1]
-    nopen = length(open)
+    if (lb == ub) return lb, deepcopy(xlb) end
     nrows = size(data.D, 1)
     ncols = size(data.D, 2)
+    open = [b.j for b in bbnode.branches if b.sense == 'G' && b.bound == 1]
+    closed = [b.j for b in bbnode.branches if b.sense == 'L' && b.bound == 0]
+    nopen = length(open)
+    nclosed = length(closed)
     x = zeros(Int64, ncols)
     y = zeros(Int64, ncols)
     for j in open
         x[j] = 1
     end
-    xlb = deepcopy(x)
+    newxlb = deepcopy(x)
     for i in 1 : ncols
-        if sum(xlb) >= data.p break
-        else xlb[i] = 1
+        if sum(newxlb) >= data.p break
+        elseif !in(i, closed) newxlb[i] = 1
         end
-    end    
+    end 
+    dlb = compute_sorted_distances(data, newxlb)  
+    if dlb[k] > lb
+        lb = dlb[k]
+        xlb = newxlb
+    end
     while lb < ub
-        # println("lb = $lb, ub = $ub")
         r = ceil(Int64, (lb + ub) / 2)
-        cov, map, numcov = build_coverage(data, bbnode, r, false)
-        sol = setpacking(cov, k - 1 - numcov, data.p - nopen)
-        if !isempty(sol)
+        # print("lb = $lb, ub = $ub, r = $r")
+        cov, map, numcov = build_coverage(data, bbnode, r - 1)
+        sol = setcover(cov, k - 1 - numcov, data.p - nopen)
+        if isempty(sol)
             # println("feasible r = $r")
             # println("sol = $sol")
             lb = r
+            # println(", I")
+        else
+            # println("infeasible r = $r")
+            ub = r - 1
             for j in 1 : ncols
                 y[j] = 0
             end
@@ -68,12 +86,11 @@ function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
                 y[j] = 1
             end
             xlb = x + y
-        else
-            # println("infeasible r = $r")
-            ub = r - 1
+            # println(", F")
         end
     end
-    return lb + 1, xlb
+    # println("result = $(lb)")
+    return lb, xlb
 end
 
 function build_coverage(data::DOMPData, bbnode::BbNode, r::Int64, applydom::Bool = true)::Tuple{Matrix{Bool}, Vector{Int64}, Int64}

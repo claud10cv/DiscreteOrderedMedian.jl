@@ -53,7 +53,8 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
                     end
                 end
             end
-            val, solk = dompk_neg(data, bbnode, k, vallb - 1, bbnode.ropt[k] - 1, xlbk)
+            # println("vallb = $vallb, bbnode.ropt[k] = $(bbnode.ropt[k])")
+            val, solk = dompk_neg(data, bbnode, k, vallb, bbnode.ropt[k], xlbk)
             if val == vallb && !isempty(xlbk)
                 # println("recycling solution")
                 solk = xlbk
