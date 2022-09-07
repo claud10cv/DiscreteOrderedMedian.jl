@@ -19,6 +19,7 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
     end 
     dub = compute_sorted_distances(data, newxub)  
     if dub[k] < ub
+        # println("improved ub from $ub to $(dub[k])")
         ub = dub[k]
         xub = newxub
     end

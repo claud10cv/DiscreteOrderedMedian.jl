@@ -2,12 +2,8 @@ function compute_sorted_distances(data::DOMPData, x::Vector{Int64})::Vector{Int6
     nrows = size(data.D, 1)
     ncols = size(data.D, 2)
     open = [j for j in 1 : ncols if x[j] == 1]
-    d = 1000000000000 * ones(Int64, nrows)
-    for i in 1 : nrows, j in open
-        d[i] = min(d[i], data.D[i, j])
-    end
-    sort!(d)
-    return d
+    d = [(!isempty(open) ? minimum(data.D[i, open]) : 1000000000000) for i in 1 : nrows]
+    return sort(d)
 end
 
 function compute_weighted_cost(data::DOMPData, d::Vector{Int64})
@@ -17,7 +13,7 @@ end
 function find_most_fractional(x::Vector{Float64}, z::Vector{Float64})
     xmin, j = findmax([abs(y - round(y)) for y in z])
     if abs(xmin) < 1e-2
-        xmin, j = findmax([abs(y - round(y)) for y in x])
+        xmin, j = findmax(abs.(x - round.(x)))
     end
     return xmin, j
 end
@@ -87,9 +83,11 @@ function modify_lambda(data::DOMPData, ltype::Symbol)::DOMPData
     return DOMPData(D, p, lambda)
 end
 
-function strong_branching(data::DOMPData, parent::BbNode, x::Vector{Float64}, z::Vector{Float64})::Vector{PseudoCost}
+function strong_branching(data::DOMPData, parent::BbNode, pseudo::Matrix{Float64}, x::Vector{Float64}, z::Vector{Float64})::Vector{PseudoCost}
     nrows = size(data.D, 1)
     ncols = size(data.D, 2)
+    # println("branching with x = $([y for y in x if abs(y) > 1e-5])")
+    # println("branching with z = $([y for y in z if abs(y) > 1e-5])")
     fract = [(i, abs(y - round(y)), y) for (i, y) in enumerate(z)]
     filter!(u -> u[2] > 1e-6, fract)
     # empty!(fract)
@@ -103,52 +101,33 @@ function strong_branching(data::DOMPData, parent::BbNode, x::Vector{Float64}, z:
     end
     pcosts = PseudoCost[]
     for (i, d, v) in fract
-        lbound = rbound = 0
-        for b in [BranchInfo(i, 'L', 0), BranchInfo(i, 'G', 1)]
-            new_branch = deepcopy(parent.branches)
-            new_ropt = deepcopy(parent.ropt)
-            push!(new_branch, b)
-            new_bbnode = BbNode(new_branch, 0, 0, ([], []), [], [Int64[] for k in 1 : nrows], new_ropt)
-            new_xub = deepcopy(parent.xub)
-            domp_lb!(data, new_bbnode, parent, new_xub)
-            if b.sense == 'G'
-                rbound = new_bbnode.lb
-            else
-                lbound = new_bbnode.lb
+        if minimum(@view pseudo[i, :]) >= 1
+            push!(pcosts, PseudoCost(i, pseudo[i, 1], pseudo[i, 2]))
+        else
+            lbound = rbound = 0
+            for b in [BranchInfo(i, 'L', 0), BranchInfo(i, 'G', 1)]
+                new_branch = deepcopy(parent.branches)
+                new_ropt = deepcopy(parent.ropt)
+                push!(new_branch, b)
+                new_bbnode = BbNode(new_branch, 0, 0, ([], []), [], [Int64[] for k in 1 : nrows], new_ropt)
+                new_xub = deepcopy(parent.xub)
+                domp_lb!(data, new_bbnode, parent, new_xub)
+                if b.sense == 'G'
+                    rbound = new_bbnode.lb
+                else
+                    lbound = new_bbnode.lb
+                end
             end
+            pcdown = (lbound - parent.lb) / v
+            pcup = (rbound - parent.lb) / (1 - v)
+            pc = PseudoCost(i, pcdown, pcup)
+            pseudo[i, 1] = (pseudo[i, 1] + pcdown) / 2
+            pseudo[i, 2] = (pseudo[i, 2] + pcup) / 2
+            push!(pcosts, pc)
         end
-        pcdown = (lbound - parent.lb) / v
-        pcup = (rbound - parent.lb) / (1 - v)
-        pc = PseudoCost(i, pcdown, pcup)
-        push!(pcosts, pc)
     end
-    # sort!(pcosts; lt = (u, v) -> u.down + u.up > v.down + v.up)
     sort!(pcosts; lt = (u, v) -> min(u.down, u.up) > min(v.down, v.up) || (min(u.down, u.up) == min(v.down, v.up) && max(u.down, u.up) > max(v.down, v.up)))
     return pcosts
-    # nbest = length(besti)
-    # fract = [(besti[k], bestd[k]) for k in 1 : nbest] 
-    # if nbest > 1
-    #     lb = 0
-    #     besti = []
-    #     bestd = []
-    #     for (i, d) in fract
-    #         new_branch = deepcopy(parent.branches)
-    #         new_ropt = deepcopy(parent.ropt)
-    #         push!(new_branch, BranchInfo(i, 'G', 1))
-    #         new_bbnode = BbNode(new_branch, 0, 0, ([], []), [], new_ropt)
-    #         new_xub = deepcopy(parent.xub)
-    #         domp_lb!(data, new_bbnode, new_xub)
-    #         if new_bbnode.lb > lb
-    #             besti = [i]
-    #             bestd = [d]
-    #             lb = new_bbnode.lb
-    #         elseif new_bbnode.lb >= lb
-    #             push!(besti, i)
-    #             push!(bestd, d)
-    #         end
-    #     end
-    # end 
-    # return bestd[1], besti[1]
 end
 
 function can_recycle_solution(bbnode::BbNode, xk::Vector{Int64})::Bool

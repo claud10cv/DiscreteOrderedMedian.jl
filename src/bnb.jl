@@ -32,6 +32,7 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
     push!(queue, root => root.lb)
     println("\t$it\t$global_lb\t\t$global_ub\t\t$root_gap\t\t$elapsed\t\t$(length(queue))")
     if root.lb >= root.ub return root.lb, root.ub, root.xlb, root.xub end
+    pseudocosts = zeros(ncols, 2)
     while !isempty(queue) && elapsed < time_limit
         bbnode = dequeue!(queue)
         global_lb = bbnode.lb
@@ -42,8 +43,7 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
         # find the most fractional variable
         # val, j = find_most_fractional(bbnode.xlb...)
         # find the best branch by strong branching
-        pcosts = strong_branching(data, bbnode, bbnode.xlb...)
-        # println(pcosts[1])
+        pcosts = strong_branching(data, bbnode, pseudocosts, bbnode.xlb...)
         j = pcosts[1].i
         # println("branching on variable x[$j] with fraction $val")
         # create branch xj <= 0
@@ -57,8 +57,10 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
         children = [left_child, right_child]
         # solve children
         # println("processing children")
+        chdelta = Float64[]
         for child in children
             domp_lb!(data, child, bbnode, global_xub)
+            push!(chdelta, child.lb - bbnode.lb)
             # println("child bound = $(child.lb)")
             @assert(child.lb >= bbnode.lb, ("bound discrepancy of $(child.lb - bbnode.lb)"))
             if child.ub < global_ub
@@ -69,6 +71,8 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
                 enqueue!(queue, child => child.lb)
             end
         end
+        pseudocosts[j, 1] = (pseudocosts[j, 1] + chdelta[1] * bbnode.xlb[1][j]) / 2
+        pseudocosts[j, 2] = (pseudocosts[j, 2] + chdelta[2] * (1 - bbnode.xlb[1][j])) / 2
         t1 = time_ns()
         elapsed = ceil(100 * (t1 - t0) * 1e-9) / 100
         println("\t$it\t$global_lb\t\t$global_ub\t\t$gap\t\t$elapsed\t\t$(length(queue))")
