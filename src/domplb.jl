@@ -12,6 +12,10 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     xlb_ub = zeros(Int64, ncols)
     xub = zeros(Int64, ncols)
     dk = [zeros(Int64, nrows) for i in 1 : nrows]
+    np = length([b for b in bbnode.branches if b.sense == 'G' && b.bound == 1])
+    if np >= data.p
+        println("reached maximum p = $np")
+    end
     # resize!(bbnode.xk, nrows)
     for k in nrows : -1 : 1
         if data.lambda[k] != 0 && !isnothing(parent) && can_recycle_solution(bbnode, parent.xk[k])
