@@ -12,9 +12,23 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     xlb_ub = zeros(Int64, ncols)
     xub = zeros(Int64, ncols)
     dk = [zeros(Int64, nrows) for i in 1 : nrows]
-    np = length([b for b in bbnode.branches if b.sense == 'G' && b.bound == 1])
-    if np >= data.p
-        println("reached maximum p = $np")
+    fixone = [b for b in bbnode.branches if b.sense == 'G' && b.bound == 1]
+    nfixone = length(fixone)
+    if nfixone >= data.p
+        # println("fixed node")
+        xfix = zeros(Int64, ncols)
+        for b in fixone
+            xfix[b.j] = 1
+        end
+        dfix = compute_sorted_distances(data, xfix)
+        vfix = compute_weighted_cost(data, dfix)
+        # println("value of node is $vfix")
+        bbnode.xlb = deepcopy(xfix), deepcopy(xfix)
+        bbnode.xub = deepcopy(xfix)
+        bbnode.xk = [deepcopy(xfix) for i in 1 : nrows]
+        bbnode.lb = bbnode.ub = vfix
+        bbnode.ropt = deepcopy(dfix)
+        return
     end
     # resize!(bbnode.xk, nrows)
     for k in nrows : -1 : 1
