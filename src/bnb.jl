@@ -43,26 +43,32 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
         # find the most fractional variable
         # val, j = find_most_fractional(bbnode.xlb...)
         # find the best branch by strong branching
-        pcosts = strong_branching(data, bbnode, pseudocosts, bbnode.xlb...)
-        j = pcosts[1].i
-        # println("branching on variable x[$j] with fraction $val")
-        # create branch xj <= 0
-        left_branch = deepcopy(bbnode.branches)
-        push!(left_branch, BranchInfo(j, 'L', 0))
-        left_child = BbNode(left_branch, 0, 0, ([], []), [], [Int64[] for k in 1 : nrows], deepcopy(bbnode.ropt))
-        #create branch xj >= 1
-        right_branch = deepcopy(bbnode.branches)
-        push!(right_branch, BranchInfo(j, 'G', 1))
-        right_child = BbNode(right_branch, 0, 0, ([], []), [], [Int64[] for k in 1 : nrows], deepcopy(bbnode.ropt))
+        branches = strong_branching(data, bbnode, global_ub, pseudocosts, bbnode.xlb...)
+        j = branches[1][1].i
+        left_child = branches[1][2]
+        right_child = branches[1][3]
+        # # println("branching on variable x[$j] with fraction $val")
+        # # create branch xj <= 0
+        if isnothing(left_child)
+            left_branch = deepcopy(bbnode.branches)
+            push!(left_branch, BranchInfo(j, 'L', 0))
+            left_child = BbNode(left_branch, 0, 0, ([], []), [], [Int64[] for k in 1 : nrows], deepcopy(bbnode.ropt))
+            domp_lb!(data, left_child, bbnode, global_xub)
+        end
+        if isnothing(right_child)
+            right_branch = deepcopy(bbnode.branches)
+            push!(right_branch, BranchInfo(j, 'G', 1))
+            right_child = BbNode(right_branch, 0, 0, ([], []), [], [Int64[] for k in 1 : nrows], deepcopy(bbnode.ropt))
+            domp_lb!(data, right_child, bbnode, global_xub)
+        end
+        
         children = [left_child, right_child]
-        # solve children
-        # println("processing children")
         chdelta = Float64[]
         for child in children
-            domp_lb!(data, child, bbnode, global_xub)
+            # domp_lb!(data, child, bbnode, global_xub)
             push!(chdelta, child.lb - bbnode.lb)
             # println("child bound = $(child.lb)")
-            @assert(child.lb >= bbnode.lb, ("bound discrepancy of $(child.lb - bbnode.lb)"))
+            @assert(child.lb >= bbnode.lb, ("bound discrepancy of $(child.lb - bbnode.lb), child.lb = $(child.lb), parent.lb = $(bbnode.lb)"))
             if child.ub < global_ub
                 global_ub = child.ub
                 global_xub = child.xub

@@ -1,5 +1,6 @@
 function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}, global_xub::Vector{Int64})::Nothing#Tuple{Int64, Int64, Vector{Float64}, Vector{Int64}}
     lb = 0
+    lk = ReentrantLock()
     global_dists = compute_sorted_distances(data, global_xub)
     ub = compute_weighted_cost(data, global_dists)
     nrows = size(data.D, 1)
@@ -12,6 +13,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     xlb_ub = zeros(Int64, ncols)
     xub = zeros(Int64, ncols)
     dk = [zeros(Int64, nrows) for i in 1 : nrows]
+    xk = [Int64[] for i in 1 : nrows]
     fixone = [b for b in bbnode.branches if b.sense == 'G' && b.bound == 1]
     nfixone = length(fixone)
     if nfixone >= data.p
@@ -30,85 +32,115 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
         bbnode.ropt = deepcopy(dfix)
         return
     end
-    # resize!(bbnode.xk, nrows)
-    for k in nrows : -1 : 1
+
+    Threads.@threads for k in nrows : -1 : 1
         if data.lambda[k] != 0 && !isnothing(parent) && can_recycle_solution(bbnode, parent.xk[k])
             # println("can recycle solution $k = $(parent.xk[k])")
             # val, bbnode.xk[k] = dompk_pos(data, bbnode, k, bbnode.ropt[k], k == nrows ? maxd : bbnode.ropt[k + 1])
             # d = compute_sorted_distances(data, parent.xk[k])
             # @assert(val == d[k], ("distances do not coincide, with val = $val, d = $(d[k]) and parent.xk = $(parent.xk[k])"))
-            val = bbnode.ropt[k] = parent.ropt[k]
-            bbnode.xk[k] = deepcopy(parent.xk[k])
-            dk[k] = compute_sorted_distances(data, bbnode.xk[k])
+            # lk = ReentrantLock()
+            lock(lk) do
+                val = bbnode.ropt[k] = parent.ropt[k]
+                xk[k] = deepcopy(parent.xk[k])
+            end
+            dkk = compute_sorted_distances(data, xk[k])
+            lock(lk) do
+                dk[k] = dkk
+            end
             # bbnode.ropt[k] = parent.ropt[k]
         elseif data.lambda[k] > 0
-            valub = maxd + 1
+            valub = maxd
             xubk = Int64[]
-            for l in k + 1 : nrows
-                if data.lambda[l] != 0
-                    if dk[l][k] < valub
-                        valub = dk[l][k]
-                        xubk = bbnode.xk[l]
+            # lk = ReentrantLock()
+            lock(lk) do
+                for l in k + 1 : nrows
+                    if data.lambda[l] != 0 && dk[l][k] > 0
+                        if dk[l][k] < valub
+                            valub = dk[l][k]
+                            xubk = xk[l]
+                        end
                     end
                 end
             end
             @assert(bbnode.ropt[k] <= valub, ("bounds inconsistent, $(bbnode.ropt[k]), $(valub)"))
             val, solk = dompk_pos(data, bbnode, k, bbnode.ropt[k], valub, xubk)
-            if val == valub && !isempty(xubk)
-                solk = xubk
-            end
+            # if val == valub && !isempty(xubk)
+            #     solk = xubk
+            # end
+            dkk = compute_sorted_distances(data, solk)
             @assert(!isempty(solk), ("empty solution vector!"))
-            bbnode.xk[k] = solk
-            dk[k] = compute_sorted_distances(data, bbnode.xk[k])
+            lock(lk) do
+                xk[k] = solk
+                dk[k] = dkk
+            end
         elseif data.lambda[k] < 0
-            vallb = mind - 1
+            vallb = mind
             xlbk = Int64[]
-            for l in k + 1 : nrows
-                if data.lambda[l] != 0
-                    if dk[l][k] > vallb
-                        vallb = dk[l][k]
-                        xlbk = bbnode.xk[l]
+            # lk = ReentrantLock()
+            lock(lk) do
+                for l in k + 1 : nrows
+                    if data.lambda[l] != 0 && dk[l][k] > 0
+                        if dk[l][k] > vallb
+                            vallb = dk[l][k]
+                            xlbk = xk[l]
+                        end
                     end
                 end
             end
             # println("vallb = $vallb, bbnode.ropt[k] = $(bbnode.ropt[k])")
             val, solk = dompk_neg(data, bbnode, k, vallb, bbnode.ropt[k], xlbk)
-            if val == vallb && !isempty(xlbk)
-                # println("recycling solution")
-                solk = xlbk
-            end
+            # if val == vallb && !isempty(xlbk)
+            #     solk = xlbk
+            # end
             @assert(!isempty(solk), ("empty solution vector!"))
-            bbnode.xk[k] = solk
-            dk[k] = compute_sorted_distances(data, bbnode.xk[k])
+            dkk = compute_sorted_distances(data, solk)
+            lock(lk) do
+                xk[k] = solk
+                dk[k] = dkk
+            end
             # println("solution of value $val")   
             @assert(val <= bbnode.ropt[k], ("discrepancy in computing val for lambda < 0, child = $val, parent = $(bbnode.ropt[k])"))
         else
-            if k == nrows
-                bbnode.ropt[k] = maxd
-            else
-                bbnode.ropt[k] = bbnode.ropt[k + 1]
+            # lk = ReentrantLock()
+            lock(lk) do
+                if k == nrows
+                    bbnode.ropt[k] = maxd
+                else
+                    bbnode.ropt[k] = bbnode.ropt[k + 1]
+                end
             end
         end
         if data.lambda[k] != 0
-            bbnode.ropt[k] = val
-            lb += data.lambda[k] * val
-            dist = compute_sorted_distances(data, bbnode.xk[k])
+            # lk = ReentrantLock()
+            dist = compute_sorted_distances(data, xk[k])
             ubk = compute_weighted_cost(data, dist)
-            if ubk < ub
-                ub = ubk
-                xub = bbnode.xk[k]
+            lock(lk) do
+                bbnode.ropt[k] = val
+                lb += data.lambda[k] * val
+                if ubk < ub
+                    ub = ubk
+                    xub = xk[k]
+                end
+                nneg_all += 1
+                # xlb_all += bbnode.xk[k]
             end
-            nneg_all += 1
-            xlb_all += bbnode.xk[k]
         end
     end
+    
+    bbnode.xk = get_assignment_minimum_support(xk, dk, bbnode.ropt)
+    
+    @assert(isnothing(parent) || lb >= parent.lb, ("lb is lower that that of parent, child.lb = $lb, parent.lb = $(parent.lb)"))
     dist = compute_sorted_distances(data, xub)
     ub = compute_weighted_cost(data, dist)
 
     for k in 1 : nrows
-        if !isempty(bbnode.xk[k]) && sum(bbnode.xk[k]) > 0 && bbnode.ropt[k] < dist[k]
-            nneg_ub += 1
-            xlb_ub += bbnode.xk[k]
+        if !isempty(bbnode.xk[k]) && sum(bbnode.xk[k]) > 0
+            xlb_all += bbnode.xk[k]
+            if bbnode.ropt[k] < dist[k]
+                nneg_ub += 1
+                xlb_ub += bbnode.xk[k]
+            end
         end
     end
     xlb_all /= nneg_all

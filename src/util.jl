@@ -83,7 +83,7 @@ function modify_lambda(data::DOMPData, ltype::Symbol)::DOMPData
     return DOMPData(D, p, lambda)
 end
 
-function strong_branching(data::DOMPData, parent::BbNode, pseudo::Matrix{Float64}, x::Vector{Float64}, z::Vector{Float64})::Vector{PseudoCost}
+function strong_branching(data::DOMPData, parent::BbNode, ub::Int64, pseudo::Matrix{Float64}, x::Vector{Float64}, z::Vector{Float64})::Vector{Tuple{PseudoCost, Union{Nothing, BbNode}, Union{Nothing, BbNode}}}
     nrows = size(data.D, 1)
     ncols = size(data.D, 2)
     # println("branching with x = $([y for y in x if abs(y) > 1e-5])")
@@ -99,12 +99,16 @@ function strong_branching(data::DOMPData, parent::BbNode, pseudo::Matrix{Float64
     if size(fract, 1) > 5
         resize!(fract, 5)
     end
-    pcosts = PseudoCost[]
+    pcosts = Tuple{PseudoCost, Union{Nothing, BbNode}, Union{Nothing, BbNode}}[]
+    fathomed = falses(ncols)
     for (i, d, v) in fract
-        if minimum(@view pseudo[i, :]) >= 1
-            push!(pcosts, PseudoCost(i, pseudo[i, 1], pseudo[i, 2]))
+        minpc = minimum(@view pseudo[i, :])
+        # println("min pc = $minpc")
+        if minpc >= 50.0
+            push!(pcosts, (PseudoCost(i, pseudo[i, 1], pseudo[i, 2]), nothing, nothing))
         else
             lbound = rbound = 0
+            newbbnode = BbNode[]
             for b in [BranchInfo(i, 'L', 0), BranchInfo(i, 'G', 1)]
                 new_branch = deepcopy(parent.branches)
                 new_ropt = deepcopy(parent.ropt)
@@ -113,20 +117,25 @@ function strong_branching(data::DOMPData, parent::BbNode, pseudo::Matrix{Float64
                 new_xub = deepcopy(parent.xub)
                 domp_lb!(data, new_bbnode, parent, new_xub)
                 if b.sense == 'G'
-                    rbound = new_bbnode.lb
+                    rbound = new_bbnode.lb 
                 else
                     lbound = new_bbnode.lb
                 end
+                push!(newbbnode, new_bbnode)
             end
             pcdown = (lbound - parent.lb) / v
             pcup = (rbound - parent.lb) / (1 - v)
             pc = PseudoCost(i, pcdown, pcup)
             pseudo[i, 1] = (pseudo[i, 1] + pcdown) / 2
             pseudo[i, 2] = (pseudo[i, 2] + pcup) / 2
-            push!(pcosts, pc)
+            push!(pcosts, (pc, newbbnode[1], newbbnode[2]))
+            if max(lbound, rbound) >= ub 
+                fathomed[i] = true 
+                break
+            end
         end
     end
-    sort!(pcosts; lt = (u, v) -> min(u.down, u.up) > min(v.down, v.up) || (min(u.down, u.up) == min(v.down, v.up) && max(u.down, u.up) > max(v.down, v.up)))
+    sort!(pcosts; lt = (u, v) -> fathomed[u[1].i] && !fathomed[v[1].i] || (fathomed[u[1].i] == fathomed[v[1].i] && min(3 * u[1].down, u[1].up) > min(3 * v[1].down, v[1].up)))
     return pcosts
 end
 
@@ -145,4 +154,47 @@ function can_recycle_solution(bbnode::BbNode, xk::Vector{Int64})::Bool
         end
     end
     return true
+end
+
+function get_assignment_minimum_support(x::Vector{Vector{Int64}}, d::Vector{Vector{Int64}}, ropt::Vector{Int64})::Vector{Vector{Int64}}
+    nrows = size(x, 1)
+    @assert(nrows > 0, "empty rows!")
+    ncols = size(x[1], 1)
+    y = [Int64[] for i in 1 : nrows]
+    isfeas = falses(nrows, nrows)
+    for i in 1 : nrows, j in 1 : nrows
+        isfeas[i, j] = !isempty(x[j]) && d[j][i] == ropt[i] # the j-th sol provides the correct bound for the row i
+    end
+    nottaken = trues(nrows)
+    isassigned = falses(nrows)
+    support = falses(ncols)
+    let # take first vector as the one that covers the largest number of rows
+        v, j = findmax([sum(@view isfeas[:, j]) for j in 1 : nrows])
+        for i in 1 : nrows
+            if isfeas[i, j]
+                y[i] = x[j]
+                isassigned[i] = true
+            end
+        end
+        nottaken[j] = false
+        support = support .| (x[j] .> 0)
+    end
+    while !all(isassigned)
+        vec = [(j, sum(support .| (x[j] .> 0)), sum(isfeas[i, j] for i in 1 : nrows if !isassigned[i])) for j in 1 : nrows if nottaken[j]]
+        sort!(vec; lt = (u, v) -> u[2] < v[2] || (u[2] == v[2] && u[3] > v[3]))
+        for (j, s, f) in vec
+            if f > 0
+                for i in 1 : nrows
+                    if isfeas[i, j] && !isassigned[i]
+                        y[i] = x[j]
+                        isassigned[i] = true
+                    end
+                end
+                nottaken[j] = false
+                support = support .| (x[j] .> 0)
+                break
+            end
+        end
+    end
+    return y
 end

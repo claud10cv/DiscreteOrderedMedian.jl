@@ -23,11 +23,30 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
         ub = dub[k]
         xub = newxub
     end
+    let
+        cov, map, numcov = build_coverage(data, bbnode, lb)
+        sol = setcover(cov, k - numcov, data.p - nopen)
+        if !isempty(sol)
+            # println("feasible r = $lb")
+            ub = lb
+            for j in 1 : ncols
+                y[j] = 0
+            end
+            for j in map[sol]
+                y[j] = 1
+            end
+            return ub, x + y
+        else
+            # println("infeasible r = $lb")
+            lb += 1
+        end
+    end
     while lb < ub
         r = floor(Int64, (lb + ub) / 2)
         cov, map, numcov = build_coverage(data, bbnode, r)
         sol = setcover(cov, k - numcov, data.p - nopen)
         if !isempty(sol)
+            # println("feasible r = $r")
             ub = r
             for j in 1 : ncols
                 y[j] = 0
@@ -37,6 +56,7 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
             end
             xub = x + y
         else
+            # println("infeasible r = $r")
             lb = r + 1
         end
     end
@@ -66,6 +86,21 @@ function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
     if dlb[k] > lb
         lb = dlb[k]
         xlb = newxlb
+    end
+    let
+        cov, map, numcov = build_coverage(data, bbnode, ub - 1)
+        sol = setcover(cov, k - 1 - numcov, data.p - nopen)
+        if isempty(sol)
+            return ub, xlb
+        else
+            for j in 1 : ncols
+                y[j] = 0
+            end
+            for j in map[sol]
+                y[j] = 1
+            end
+            ub -= 1
+        end
     end
     while lb < ub
         r = ceil(Int64, (lb + ub) / 2)
@@ -105,7 +140,7 @@ function build_coverage(data::DOMPData, bbnode::BbNode, r::Int64, applydom::Bool
     for b in bbnode.branches
         j, s, bound = b.j, b.sense, b.bound
         if s == 'G' && bound == 1
-            iscov = iscov .| cov[:, j]
+            iscov = iscov .| @view cov[:, j]
         end
     end
     jinds = setdiff(collect(1 : ncols), [b.j for b in bbnode.branches])
@@ -125,6 +160,7 @@ function build_coverage(data::DOMPData, bbnode::BbNode, r::Int64, applydom::Bool
         dom = [j for j in 1 : ncols if dom[j]]
         jinds = setdiff(jinds, dom)
     end
+    iinds = [i for i in iinds if sum(cov[i, jinds]) > 0]
     cov = cov[iinds, jinds]
     return cov, jinds, sum(iscov)
 end
