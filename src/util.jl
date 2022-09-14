@@ -79,6 +79,8 @@ function modify_lambda(data::DOMPData, ltype::Symbol)::DOMPData
         for i in 2 : n - 1
             lambda[i] = 1
         end
+    elseif ltype == :T11 # sort in ascending order
+        lambda = sort(data.lambda)
     end
     return DOMPData(D, p, lambda)
 end
@@ -156,42 +158,48 @@ function can_recycle_solution(bbnode::BbNode, xk::Vector{Int64})::Bool
     return true
 end
 
-function get_assignment_minimum_support(x::Vector{Vector{Int64}}, d::Vector{Vector{Int64}}, ropt::Vector{Int64})::Vector{Vector{Int64}}
-    nrows = size(x, 1)
-    @assert(nrows > 0, "empty rows!")
-    ncols = size(x[1], 1)
-    y = [Int64[] for i in 1 : nrows]
-    isfeas = falses(nrows, nrows)
-    for i in 1 : nrows, j in 1 : nrows
-        isfeas[i, j] = !isempty(x[j]) && d[j][i] == ropt[i] # the j-th sol provides the correct bound for the row i
+function get_assignment_minimum_support(data::DOMPData, x::Vector{Vector{Int64}}, d::Vector{Vector{Int64}}, ropt::Vector{Int64})::Vector{Vector{Int64}}
+    nrows = size(data.D, 1)
+    ncols = size(data.D, 2)
+    rinds = [i for i in 1 : nrows if data.lambda[i] != 0]
+    nrinds = length(rinds)
+    isfeas = falses(nrinds, nrinds)
+    for i in 1 : nrinds, j in 1 : nrinds
+        ii, jj = rinds[i], rinds[j]
+        isfeas[i, j] = d[jj][ii] == ropt[ii] # the j-th sol provides the correct bound for the row i
     end
-    nottaken = trues(nrows)
-    isassigned = falses(nrows)
+    nottaken = trues(nrinds)
+    isassigned = falses(nrinds)
     support = falses(ncols)
+    y = [Int64[] for i in 1 : nrows]
     let # take first vector as the one that covers the largest number of rows
-        v, j = findmax([sum(@view isfeas[:, j]) for j in 1 : nrows])
-        for i in 1 : nrows
+        v, j = findmax([sum(@view isfeas[:, j]) for j in 1 : nrinds])
+        jj = rinds[j]
+        for i in 1 : nrinds
             if isfeas[i, j]
-                y[i] = x[j]
+                ii = rinds[i]
+                y[ii] = x[jj]
                 isassigned[i] = true
             end
         end
         nottaken[j] = false
-        support = support .| (x[j] .> 0)
+        support = support .| (x[jj] .> 0)
     end
     while !all(isassigned)
-        vec = [(j, sum(support .| (x[j] .> 0)), sum(isfeas[i, j] for i in 1 : nrows if !isassigned[i])) for j in 1 : nrows if nottaken[j]]
+        vec = [(j, sum(support .| (x[j] .> 0)), sum(isfeas[i, j] for i in 1 : nrinds if !isassigned[i])) for j in 1 : nrinds if nottaken[j]]
         sort!(vec; lt = (u, v) -> u[2] < v[2] || (u[2] == v[2] && u[3] > v[3]))
         for (j, s, f) in vec
+            jj = rinds[j]
             if f > 0
-                for i in 1 : nrows
+                for i in 1 : nrinds
                     if isfeas[i, j] && !isassigned[i]
-                        y[i] = x[j]
+                        ii = rinds[i]
+                        y[ii] = x[jj]
                         isassigned[i] = true
                     end
                 end
                 nottaken[j] = false
-                support = support .| (x[j] .> 0)
+                support = support .| (x[jj] .> 0)
                 break
             end
         end

@@ -34,6 +34,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     end
 
     Threads.@threads for k in nrows : -1 : 1
+        # println("starting lb for k = $k")
         if data.lambda[k] != 0 && !isnothing(parent) && can_recycle_solution(bbnode, parent.xk[k])
             # println("can recycle solution $k = $(parent.xk[k])")
             # val, bbnode.xk[k] = dompk_pos(data, bbnode, k, bbnode.ropt[k], k == nrows ? maxd : bbnode.ropt[k + 1])
@@ -50,7 +51,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
             end
             # bbnode.ropt[k] = parent.ropt[k]
         elseif data.lambda[k] > 0
-            valub = maxd
+            valub = maxd + 1
             xubk = Int64[]
             # lk = ReentrantLock()
             lock(lk) do
@@ -75,7 +76,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
                 dk[k] = dkk
             end
         elseif data.lambda[k] < 0
-            vallb = mind
+            vallb = mind - 1
             xlbk = Int64[]
             # lk = ReentrantLock()
             lock(lk) do
@@ -128,7 +129,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
         end
     end
     
-    bbnode.xk = get_assignment_minimum_support(xk, dk, bbnode.ropt)
+    bbnode.xk = get_assignment_minimum_support(data, xk, dk, bbnode.ropt)
     
     @assert(isnothing(parent) || lb >= parent.lb, ("lb is lower that that of parent, child.lb = $lb, parent.lb = $(parent.lb)"))
     dist = compute_sorted_distances(data, xub)

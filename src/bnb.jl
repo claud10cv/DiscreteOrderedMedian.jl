@@ -1,6 +1,6 @@
 using DataStructures
 function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vector{Float64}, Vector{Float64}}, Vector{Int64}}
-    println("ITERATION\tBEST BOUND\tBKS\t\tGAP(%)\t\tT (s)\t\tNODES LEFT")
+    println("ITERATION,BEST_BOUND,BKS,GAP(%),T(s),FRACT,BR_VAR,BR_VAL,DEPTH,NODES_LEFT")
     t0 = time_ns()
     nrows = size(data.D, 1)
     ncols = size(data.D, 2)
@@ -30,7 +30,8 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
     elapsed = ceil(100 * (t1 - t0) * 1e-9) / 100
     queue = PriorityQueue{BbNode, Int64}()
     push!(queue, root => root.lb)
-    println("\t$it\t$global_lb\t\t$global_ub\t\t$root_gap\t\t$elapsed\t\t$(length(queue))")
+    root_fract = length([i for i in 1 : ncols if abs(root.xlb[1][i] - round(root.xlb[1][i])) > 1e-6])
+    println("$it,$global_lb,$global_ub,$root_gap,$elapsed,$root_fract,--,--,0,$(length(queue))")
     if root.lb >= root.ub return root.lb, root.ub, root.xlb, root.xub end
     pseudocosts = zeros(ncols, 2)
     while !isempty(queue) && elapsed < time_limit
@@ -81,19 +82,24 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
         pseudocosts[j, 2] = (pseudocosts[j, 2] + chdelta[2] * (1 - bbnode.xlb[1][j])) / 2
         t1 = time_ns()
         elapsed = ceil(100 * (t1 - t0) * 1e-9) / 100
-        println("\t$it\t$global_lb\t\t$global_ub\t\t$gap\t\t$elapsed\t\t$(length(queue))")
+        bbnode_fract = length([i for i in 1 : ncols if abs(bbnode.xlb[1][i] - round(bbnode.xlb[1][i])) > 1e-6])
+        println("$it,$global_lb,$global_ub,$gap,$elapsed,$bbnode_fract,x[$j],$(bbnode.xlb[1][j]),$(length(bbnode.branches)),$(length(queue))")
     end
     if isempty(queue)
         global_lb = global_ub
+        depth = "--"
+        fract = 0
     else
         bbnode, bestbound = peek(queue)
         global_lb = bestbound
+        depth = length(bbnode.branches)
+        fract = length([i for i in 1 : ncols if abs(bbnode.xlb[1][i] - round(bbnode.xlb[1][i])) > 1e-6])
     end 
     it += 1
     t1 = time_ns()
     elapsed = ceil(100 * (t1 - t0) * 1e-9) / 100
     gap = ceil(Int64, 100 * (global_ub - global_lb) / global_ub * 100) / 100
-    println("\t$it\t$global_lb\t\t$global_ub\t\t$(gap)\t\t$elapsed\t\t$(length(queue))")
+    println("$it,$global_lb,$global_ub,$(gap),$elapsed,$fract,--,--,$depth,$(length(queue))")
     return global_lb, global_ub, global_xlb, global_xub
 end
         
