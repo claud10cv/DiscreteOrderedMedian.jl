@@ -186,7 +186,7 @@ function get_assignment_minimum_support(data::DOMPData, x::Vector{Vector{Int64}}
         support = support .| (x[jj] .> 0)
     end
     while !all(isassigned)
-        vec = [(j, sum(support .| (x[j] .> 0)), sum(isfeas[i, j] for i in 1 : nrinds if !isassigned[i])) for j in 1 : nrinds if nottaken[j]]
+        vec = [(j, sum(support .| (x[rinds[j]] .> 0)), sum(isfeas[i, j] for i in 1 : nrinds if !isassigned[i])) for j in 1 : nrinds if nottaken[j]]
         sort!(vec; lt = (u, v) -> u[2] < v[2] || (u[2] == v[2] && u[3] > v[3]))
         for (j, s, f) in vec
             jj = rinds[j]
