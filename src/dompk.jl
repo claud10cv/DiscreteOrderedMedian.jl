@@ -1,4 +1,10 @@
-function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int64, xub::Vector{Int64})::Tuple{Int64, Vector{Int64}}
+function dompk_pos(data::DOMPData, 
+                    bbnode::BbNode, 
+                    k::Int64, 
+                    lb::Int64, 
+                    ub::Int64, 
+                    xub::Vector{Int64},
+                    supp::Vector{Int64})::Tuple{Int64, Vector{Int64}}
     if (lb == ub) return ub, deepcopy(xub) end
     nrows = size(data.D, 1)
     ncols = size(data.D, 2)
@@ -29,7 +35,7 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
         # println("lb, ub = $lb, $newub")
         r = newub
         cov, map, numcov = build_coverage(data, bbnode, r)
-        sol = setcover(cov, k - numcov, data.p - nopen)
+        sol = setcover(cov, k - numcov, data.p - nopen, supp[map])
         if !isempty(sol)
             ub = newub
             for j in 1 : ncols
@@ -51,7 +57,7 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
     while lb < ub
         r = floor(Int64, (lb + ub) / 2)
         cov, map, numcov = build_coverage(data, bbnode, r)
-        sol = setcover(cov, k - numcov, data.p - nopen)
+        sol = setcover(cov, k - numcov, data.p - nopen, supp[map])
         if !isempty(sol)
             # println("feasible r = $r")
             ub = r
@@ -70,7 +76,13 @@ function dompk_pos(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
     return ub, xub
 end
 
-function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int64, xlb::Vector{Int64})::Tuple{Int64, Vector{Int64}}
+function dompk_neg(data::DOMPData, 
+                    bbnode::BbNode, 
+                    k::Int64, 
+                    lb::Int64, 
+                    ub::Int64, 
+                    xlb::Vector{Int64},
+                    supp::Vector{Int64})::Tuple{Int64, Vector{Int64}}
     if (lb == ub) 
         # println("x = $xlb at line 68")
         return lb, deepcopy(xlb) 
@@ -102,7 +114,7 @@ function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
     while newlb > lb
         r = newlb
         cov, map, numcov = build_coverage(data, bbnode, r - 1)
-        sol = setcover(cov, k - 1 - numcov, data.p - nopen)
+        sol = setcover(cov, k - 1 - numcov, data.p - nopen, supp)
         if isempty(sol)
             # println("x = $xlb at line 94")
             lb = r
@@ -125,7 +137,7 @@ function dompk_neg(data::DOMPData, bbnode::BbNode, k::Int64, lb::Int64, ub::Int6
         r = ceil(Int64, (lb + ub) / 2)
         # print("lb = $lb, ub = $ub, r = $r")
         cov, map, numcov = build_coverage(data, bbnode, r - 1)
-        sol = setcover(cov, k - 1 - numcov, data.p - nopen)
+        sol = setcover(cov, k - 1 - numcov, data.p - nopen, supp)
         if isempty(sol)
             # println("feasible r = $r")
             # println("sol = $sol")

@@ -33,6 +33,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
         return
     end
 
+    support = zeros(Int64, ncols)
     Threads.@threads for k in nrows : -1 : 1
         # println("starting lb for k = $k")
         if data.lambda[k] != 0 && !isnothing(parent) && can_recycle_solution(bbnode, parent.xk[k])
@@ -44,6 +45,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
             lock(lk) do
                 val = bbnode.ropt[k] = parent.ropt[k]
                 xk[k] = deepcopy(parent.xk[k])
+                support += xk[k]
             end
             dkk = compute_sorted_distances(data, xk[k])
             lock(lk) do
@@ -65,7 +67,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
                 end
             end
             @assert(bbnode.ropt[k] <= valub, ("bounds inconsistent, $(bbnode.ropt[k]), $(valub)"))
-            val, solk = dompk_pos(data, bbnode, k, bbnode.ropt[k], valub, xubk)
+            val, solk = dompk_pos(data, bbnode, k, bbnode.ropt[k], valub, xubk, support)
             # if val == valub && !isempty(xubk)
             #     solk = xubk
             # end
@@ -74,6 +76,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
             lock(lk) do
                 xk[k] = solk
                 dk[k] = dkk
+                support += solk
             end
         elseif data.lambda[k] < 0
             vallb = mind - 1
@@ -90,7 +93,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
                 end
             end
             # println("vallb = $vallb, bbnode.ropt[k] = $(bbnode.ropt[k])")
-            val, solk = dompk_neg(data, bbnode, k, vallb, bbnode.ropt[k], xlbk)
+            val, solk = dompk_neg(data, bbnode, k, vallb, bbnode.ropt[k], xlbk, support)
             # if val == vallb && !isempty(xlbk)
             #     solk = xlbk
             # end
@@ -99,6 +102,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
             lock(lk) do
                 xk[k] = solk
                 dk[k] = dkk
+                support += solk
             end
             # println("solution of value $val")   
             @assert(val <= bbnode.ropt[k], ("discrepancy in computing val for lambda < 0, child = $val, parent = $(bbnode.ropt[k])"))

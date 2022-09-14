@@ -2,8 +2,8 @@ using JuMP, CPLEX, MathOptInterface
 const MOI = MathOptInterface
 # const CS = ConstraintSolver
 
-function setcover(coverage::Matrix{Bool}, k::Int64, p::Int64)::Vector{Int64}
-    return setcover_cplex(coverage, k, p)
+function setcover(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector{Int64})::Vector{Int64}
+    return setcover_cplex(coverage, k, p, supp)
 end
 # function setcover_constraintsolver(coverage::Matrix{Bool}, k::Int64, p::Int64)::Vector{Int64}
 #     nrows = size(coverage, 1)
@@ -28,7 +28,7 @@ end
 #     end
 # end
 
-function setcover_cplex(coverage::Matrix{Bool}, k::Int64, p::Int64)::Vector{Int64}
+function setcover_cplex(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector{Int64})::Vector{Int64}
     nrows = size(coverage, 1)
     ncols = size(coverage, 2)
     if p < 0 return [] end
@@ -52,13 +52,13 @@ function setcover_cplex(coverage::Matrix{Bool}, k::Int64, p::Int64)::Vector{Int6
     if length(nonempty_rows) != nrows
         println("some empty rows = $(nrows - length(nonempty_rows))")
     end
-    # @objective(m, Min, sum(x))
+    @objective(m, Max, dot(supp, x))
     # @objective(m, Min, dot(rand(0 : 1, ncols), x))
     @constraint(m, [i in 1 : nrows], JuMP.dot(coverage[i, :], x) - y[i] >= 0)
     @constraint(m, sum(y) >= k)
     @constraint(m, sum(x) <= p)
     optimize!(m)
-    if termination_status(m) != MOI.INFEASIBLE && objective_bound(m) <= p + 1e-7
+    if termination_status(m) != MOI.INFEASIBLE# && objective_bound(m) <= p + 1e-7
         xval = value.(x)
         return [i for i in 1 : ncols if abs(xval[i]) > 1e-1]
     else
