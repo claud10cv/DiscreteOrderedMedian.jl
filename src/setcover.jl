@@ -59,8 +59,8 @@ function setcover_cplex(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector
     @constraint(m, sum(x) <= p)
     optimize!(m)
     if termination_status(m) != MOI.INFEASIBLE# && objective_bound(m) <= p + 1e-7
-        xval = value.(x)
-        return [i for i in 1 : ncols if abs(xval[i]) > 1e-1]
+        xval = round.(Int64, value.(x))
+        return [i for i in 1 : ncols if xval[i] >= 1]
     else
         # JuMP.write_to_file(m, "error.lp") 
         return Int64[]

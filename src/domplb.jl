@@ -139,17 +139,22 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     dist = compute_sorted_distances(data, xub)
     ub = compute_weighted_cost(data, dist)
 
+    count_all = 0
+    count_diff = 0
     for k in 1 : nrows
         if !isempty(bbnode.xk[k]) && sum(bbnode.xk[k]) > 0
-            xlb_all += bbnode.xk[k]
-            if bbnode.ropt[k] < dist[k]
+            delta = abs(dist[k] - bbnode.ropt[k])
+            xlb_all += abs(data.lambda[k]) * bbnode.xk[k]
+            count_all += abs(data.lambda[k])
+            if delta > 0
                 nneg_ub += 1
-                xlb_ub += bbnode.xk[k]
+                xlb_ub += delta * bbnode.xk[k]
+                count_diff += delta
             end
         end
     end
-    xlb_all /= nneg_all
-    xlb_ub /= nneg_ub
+    xlb_all /= count_all
+    xlb_ub /= count_diff
     for j in 1 : ncols
         if abs(xlb_all[j] - round(xlb_all[j])) < 1e-7
             xlb_all[j] = round(xlb_all[j])
