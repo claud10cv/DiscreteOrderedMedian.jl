@@ -34,6 +34,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     end
 
     support = zeros(Int64, ncols)
+    if !isempty(global_xub) support = global_xub end
     Threads.@threads for k in nrows : -1 : 1
         # println("starting lb for k = $k")
         if data.lambda[k] != 0 && !isnothing(parent) && can_recycle_solution(bbnode, parent.xk[k])
