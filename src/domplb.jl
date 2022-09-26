@@ -8,8 +8,6 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     ncols = size(data.D, 2)
     mind = minimum(data.D)
     maxd = maximum(data.D)
-    nneg_all = 0
-    nneg_ub = 0
     xlb_all = zeros(Int64, ncols)
     xlb_ub = zeros(Int64, ncols)
     xub = zeros(Int64, ncols)
@@ -137,8 +135,6 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
                     ub = ubk
                     xub = xk[k]
                 end
-                nneg_all += 1
-                # xlb_all += bbnode.xk[k]
             end
         end
     end
@@ -163,9 +159,8 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
             xlb_all += (1 + score) * bbnode.xk[k]
             count_all += (1 + score)
             if delta > 0
-                nneg_ub += (1 + score)
                 xlb_ub += (1 + score) * bbnode.xk[k]
-                count_diff += 1
+                count_diff += (1 + score)
             end
         end
     end
