@@ -84,7 +84,7 @@ function modify_lambda(data::DOMPData, ltype::Symbol)::DOMPData
         lambda = sort(data.lambda)
     elseif ltype == :T12 # (-1, ..., -1)
         for i in 1 : n
-            lambda[i] = 1
+            lambda[i] = -1
         end
     end
     return DOMPData(D, p, lambda)
