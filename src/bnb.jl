@@ -25,7 +25,7 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
     global_ub = lsub
     global_xub = xls
     it = 0
-    root_gap = ceil(100 * (global_ub - global_lb) / global_ub * 100) / 100
+    root_gap = ceil(100 * (global_ub - global_lb) / abs(global_ub) * 100) / 100
     t1 = time_ns()
     elapsed = ceil(100 * (t1 - t0) * 1e-9) / 100
     queue = PriorityQueue{BbNode, Int64}()
@@ -38,7 +38,7 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
         bbnode = dequeue!(queue)
         global_lb = bbnode.lb
         global_xlb = bbnode.xlb
-        gap = ceil(((global_ub - global_lb) / global_ub * 100) * 100) / 100
+        gap = ceil(((global_ub - global_lb) / abs(global_ub) * 100) * 100) / 100
         if bbnode.lb >= global_ub continue end
         it += 1
         # find the most fractional variable
@@ -98,7 +98,7 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
     it += 1
     t1 = time_ns()
     elapsed = ceil(100 * (t1 - t0) * 1e-9) / 100
-    gap = ceil(Int64, 100 * (global_ub - global_lb) / global_ub * 100) / 100
+    gap = ceil(Int64, 100 * (global_ub - global_lb) / abs(global_ub) * 100) / 100
     println("$it,$global_lb,$global_ub,$(gap),$elapsed,$fract,--,--,$depth,$(length(queue))")
     return global_lb, global_ub, global_xlb, global_xub
 end

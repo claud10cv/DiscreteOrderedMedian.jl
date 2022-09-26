@@ -2,6 +2,7 @@ function compute_sorted_distances(data::DOMPData, x::Vector{Int64})::Vector{Int6
     nrows = size(data.D, 1)
     ncols = size(data.D, 2)
     open = [j for j in 1 : ncols if x[j] == 1]
+    @assert(!isempty(open), "empty vector!")
     d = [(!isempty(open) ? minimum(data.D[i, open]) : 1000000000000) for i in 1 : nrows]
     return sort(d)
 end
@@ -156,6 +157,31 @@ function can_recycle_solution(bbnode::BbNode, xk::Vector{Int64})::Bool
         end
     end
     return true
+end
+
+function reassign_vectors(data::DOMPData, x::Vector{Vector{Int64}}, d::Vector{Vector{Int64}}, ropt::Vector{Int64})::Vector{Vector{Int64}}
+    return get_extreme_assignment_vectors(data, x, d, ropt)
+end
+
+function get_extreme_assignment_vectors(data::DOMPData, x::Vector{Vector{Int64}}, d::Vector{Vector{Int64}}, ropt::Vector{Int64})::Vector{Vector{Int64}}
+    nrows = size(data.D, 1)
+    rinds = [i for i in 1 : nrows if data.lambda[i] != 0]
+    score = u -> (u <= data.p ? 0 : (data.lambda[u] > 0 ? u : nrows - u))
+    sort!(rinds; lt = (u, v) -> score(u) > score(v))
+    y = [Int64[] for i in 1 : nrows]
+    for (k, i) in enumerate(rinds)
+        if !isempty(y[i]) continue
+        else
+            y[i] = x[i]
+            for j in @view rinds[k + 1 : end]
+                if isempty(y[j]) && ropt[j] == d[i][j]
+                    y[j] = x[i]
+                end
+            end
+        end
+    end
+    # println("about to return y = $y")
+    return y
 end
 
 function get_assignment_minimum_support(data::DOMPData, x::Vector{Vector{Int64}}, d::Vector{Vector{Int64}}, ropt::Vector{Int64})::Vector{Vector{Int64}}

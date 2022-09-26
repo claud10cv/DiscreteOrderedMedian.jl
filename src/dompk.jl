@@ -73,7 +73,7 @@ function dompk_pos(data::DOMPData,
             lb = r + 1
         end
     end
-    return ub, xub
+    return ub, deepcopy(xub)
 end
 
 function dompk_neg(data::DOMPData, 
@@ -83,10 +83,7 @@ function dompk_neg(data::DOMPData,
                     ub::Int64, 
                     xlb::Vector{Int64},
                     supp::Vector{Int64})::Tuple{Int64, Vector{Int64}}
-    if (lb == ub) 
-        # println("x = $xlb at line 68")
-        return lb, deepcopy(xlb) 
-    end
+    if (lb == ub) return lb, deepcopy(xlb) end
     nrows = size(data.D, 1)
     ncols = size(data.D, 2)
     open = [b.j for b in bbnode.branches if b.sense == 'G' && b.bound == 1]
@@ -113,13 +110,11 @@ function dompk_neg(data::DOMPData,
     step = 1
     while newlb > lb
         r = newlb
-        cov, map, numcov = build_coverage(data, bbnode, r - 1)
-        sol = setcover(cov, k - 1 - numcov, data.p - nopen, supp)
-        if isempty(sol)
+        cov, map, numcov = build_coverage(data, bbnode, r - 1, false)
+        sol = setpacking(cov, k - 1 - numcov, data.p - nopen, supp[map])
+        if !isempty(sol)
             # println("x = $xlb at line 94")
             lb = r
-            break
-        else
             for j in 1 : ncols
                 y[j] = 0
             end
@@ -127,6 +122,8 @@ function dompk_neg(data::DOMPData,
                 y[j] = 1
             end
             xlb = x + y
+            break
+        else
             ub = r - 1
             newlb = max(lb, newlb - step)
             step *= 2
@@ -135,24 +132,23 @@ function dompk_neg(data::DOMPData,
     # println("starting BS with lb = $lb, ub = $ub")
     while lb < ub
         r = ceil(Int64, (lb + ub) / 2)
-        # print("lb = $lb, ub = $ub, r = $r")
-        cov, map, numcov = build_coverage(data, bbnode, r - 1)
-        sol = setcover(cov, k - 1 - numcov, data.p - nopen, supp)
-        if isempty(sol)
+        # println("lb = $lb, ub = $ub, r = $r")
+        cov, map, numcov = build_coverage(data, bbnode, r - 1, false)
+        sol = setpacking(cov, k - 1 - numcov, data.p - nopen, supp[map])
+        if !isempty(sol)
             # println("feasible r = $r")
             # println("sol = $sol")
             lb = r
-            # println(", I")
-        else
-            # println("infeasible r = $r")
-            ub = r - 1
             for j in 1 : ncols
                 y[j] = 0
             end
             for j in map[sol]
                 y[j] = 1
             end
-            xlb = x + y
+            xlb = x + y# println(", I")
+        else
+            # println("infeasible r = $r")
+            ub = r - 1
             # println(", F")
         end
     end
