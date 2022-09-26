@@ -156,14 +156,15 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     # println("ub domplb = $ub")
     count_all = 0
     count_diff = 0
-    for k in 1 : nrows
+    for k in ordering
+        score = k <= data.p ? 0 : (data.lambda[k] > 0 ? k : nrows - k)
         if !isempty(bbnode.xk[k]) && sum(bbnode.xk[k]) > 0
             delta = abs(dist[k] - bbnode.ropt[k])
-            xlb_all += 1 * bbnode.xk[k]
-            count_all += 1
+            xlb_all += score * bbnode.xk[k]
+            count_all += score
             if delta > 0
-                nneg_ub += 1
-                xlb_ub += 1 * bbnode.xk[k]
+                nneg_ub += score
+                xlb_ub += score * bbnode.xk[k]
                 count_diff += 1
             end
         end
