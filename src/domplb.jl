@@ -159,12 +159,12 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     for k in 1 : nrows
         if !isempty(bbnode.xk[k]) && sum(bbnode.xk[k]) > 0
             delta = abs(dist[k] - bbnode.ropt[k])
-            xlb_all += abs(data.lambda[k]) * bbnode.xk[k]
-            count_all += abs(data.lambda[k])
+            xlb_all += 1 * bbnode.xk[k]
+            count_all += 1
             if delta > 0
                 nneg_ub += 1
-                xlb_ub += delta * bbnode.xk[k]
-                count_diff += delta
+                xlb_ub += 1 * bbnode.xk[k]
+                count_diff += 1
             end
         end
     end
