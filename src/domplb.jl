@@ -8,10 +8,10 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     ncols = size(data.D, 2)
     mind = minimum(data.D)
     maxd = maximum(data.D)
-    xlb_all = zeros(Int64, ncols)
-    xlb_ub = zeros(Int64, ncols)
+    xlb_all = zeros(Float64, ncols)
+    xlb_ub = zeros(Float64, ncols)
     xub = zeros(Int64, ncols)
-    dk = [zeros(Int64, nrows) for i in 1 : nrows]
+    dk = [Int64[] for i in 1 : nrows]
     xk = [Int64[] for i in 1 : nrows]
     fixone = [b for b in bbnode.branches if b.sense == 'G' && b.bound == 1]
     nfixone = length(fixone)
@@ -33,18 +33,10 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     end
 
     support = zeros(Int64, ncols)
-    if !isempty(global_xub) support = global_xub end
-    ordering = Int64[]
-    for k in nrows : -1 : 1
-        if data.lambda[k] > 0
-            push!(ordering, k)
-        end
-    end
-    for k in 1 : nrows
-        if data.lambda[k] < 0
-            push!(ordering, k)
-        end
-    end
+    if !isempty(global_xub) support = deepcopy(global_xub) end
+    ordering = [i for i in 1 : nrows if data.lambda[i] != 0]
+    sort!(ordering; lt = (u, v) -> score(data, u) > score(data, v))
+    if !isnothing(parent) support = deepcopy(parent.xub) end
     Threads.@threads for k in ordering
         # println("starting lb for k = $k")
         if !isnothing(parent) && can_recycle_solution(bbnode, parent.xk[k])
@@ -68,8 +60,8 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
             xubk = Int64[]
             # lk = ReentrantLock()
             lock(lk) do
-                for l in k + 1 : nrows
-                    if data.lambda[l] != 0 && dk[l][k] > 0
+                for l in ordering
+                    if !isempty(dk[l])
                         if dk[l][k] < valub
                             valub = dk[l][k]
                             xubk = xk[l]
@@ -78,7 +70,7 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
                 end
             end
             lbk = isnothing(parent) ? mind : parent.ropt[k]
-            @assert(lbk <= valub, ("bounds inconsistent, $(lbk), $(valub)"))
+            @assert(lbk <= valub, ("bounds inconsistent for lambda > 0, $k, $(lbk), $(valub), $xk, $dk"))
             val, solk = dompk_pos(data, bbnode, k, lbk, valub, xubk, support)
             # if val == valub && !isempty(xubk)
             #     solk = xubk
@@ -95,8 +87,8 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
             xlbk = Int64[]
             # lk = ReentrantLock()
             lock(lk) do
-                for l in k + 1 : nrows
-                    if data.lambda[l] != 0 && dk[l][k] > 0
+                for l in ordering
+                    if !isempty(dk[l])
                         if dk[l][k] > vallb
                             vallb = dk[l][k]
                             xlbk = xk[l]
@@ -105,8 +97,11 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
                 end
             end
             ubk = isnothing(parent) ? maxd : parent.ropt[k]
+            @assert(ubk >= vallb, ("bounds inconsistent for lambda < 0, $k, $(ubk), $(vallb), $xk, $dk"))
             # println("vallb = $vallb, bbnode.ropt[k] = $(bbnode.ropt[k])")
+            # print("running dompk for k = $k, lambda < 0, lb = $vallb, ub = $ubk")
             val, solk = dompk_neg(data, bbnode, k, vallb, ubk, xlbk, support)
+            # println(", val = $val")
             # if val == vallb && !isempty(xlbk)
             #     solk = xlbk
             # end
@@ -124,8 +119,10 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
         end
         let
             # lk = ReentrantLock()
-            @assert(sum(xk[k]) > 0, "empty vector x!")
+            @assert(sum(xk[k]) == data.p, "xk is of the wrong size ($(sum(xk[k])) instead of $(data.p)), xk = $(xk[k])")
             dist = compute_sorted_distances(data, xk[k])
+            # println("dk[$k] = $(dist[1 : 12])")
+            # println("xk[$k] = $(xk[k])")
             ubk = compute_weighted_cost(data, dist)
             # println("ubk = $ubk")
             lock(lk) do
@@ -152,18 +149,24 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     # println("ub domplb = $ub")
     count_all = 0
     count_diff = 0
+    # nit = 0
     for k in ordering
-        score = k <= data.p ? 0 : (data.lambda[k] > 0 ? k : nrows - k)
+        # nit += 1
+        sk = 1#log(2, score(data, k) + 1)
         if !isempty(bbnode.xk[k]) && sum(bbnode.xk[k]) > 0
             delta = abs(dist[k] - bbnode.ropt[k])
-            xlb_all += (1 + score) * bbnode.xk[k]
-            count_all += (1 + score)
+            xlb_all += sk * bbnode.xk[k]
+            count_all += sk
             if delta > 0
-                xlb_ub += (1 + score) * bbnode.xk[k]
-                count_diff += (1 + score)
+                xlb_ub += sk * bbnode.xk[k]
+                count_diff += sk
+                # fractionality = maximum(xlb_ub / count_diff - round.(Int64, xlb_ub / count_diff))
+                # println("fractionality = $fractionality")
+                # if fractionality > 1e-6 break end
             end
         end
     end
+    # println("aborted LB at iteration $nit of $(length(ordering))")
     xlb_all /= count_all
     xlb_ub /= count_diff
     for j in 1 : ncols

@@ -45,6 +45,13 @@ function dompk_pos(data::DOMPData,
                 y[j] = 1
             end
             xub = x + y
+            if sum(xub) < data.p
+                diff = data.p - sum(xub)
+                others = [i for i in 1 : ncols if !in(i, closed) && xub[i] == 0]
+                for i in others[1 : diff]
+                    xub[i] = 1
+                end
+            end
             break
         else
             # println("infeasible r = $lb")
@@ -68,6 +75,13 @@ function dompk_pos(data::DOMPData,
                 y[j] = 1
             end
             xub = x + y
+            if sum(xub) < data.p
+                diff = data.p - sum(xub)
+                others = [i for i in 1 : ncols if !in(i, closed) && xub[i] == 0]
+                for i in others[1 : diff]
+                    xub[i] = 1
+                end
+            end
         else
             # println("infeasible r = $r")
             lb = r + 1

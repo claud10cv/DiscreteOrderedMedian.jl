@@ -33,6 +33,11 @@ function setcover(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector{Int64
     optimize!(m)
     if termination_status(m) != MOI.INFEASIBLE# && objective_bound(m) <= p + 1e-7
         xval = round.(Int64, value.(x))
+        f = 1
+        while f <= ncols && sum(xval) < p
+            xval[f] = 1
+            f += 1
+        end
         return [i for i in 1 : ncols if xval[i] >= 1]
     else
         # JuMP.write_to_file(m, "error.lp") 

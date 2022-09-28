@@ -34,11 +34,17 @@ function modify_lambda(data::DOMPData, ltype::Symbol)::DOMPData
     elseif ltype == :T2 #centre
         lambda[end] = 1
     elseif ltype == :T3 #centrum
-        for i in ceil(Int64, n / 2) : n
+        for i in ceil(Int64, n / 2) + 1 : n
+            lambda[i] = 1
+        end
+    elseif ltype == :T3A #complement centrum
+        for i in 1 : ceil(Int64, n / 2)
             lambda[i] = 1
         end
     elseif ltype == :T4 #k1-k2-trimmed mean, 25% each side
-        for i in ceil(Int64, n / 4) : floor(Int64, 3 * n / 4)
+        t0 = floor(Int64, n / 4) + 1
+        tf = t0 + round(Int64, n / 2) - 1
+        for i in t0 : tf
             lambda[i] = 1
         end
     elseif ltype == :T5 # alternating ending in (0, 1)
@@ -71,6 +77,20 @@ function modify_lambda(data::DOMPData, ltype::Symbol)::DOMPData
             else lambda[i] = 0
             end
         end
+    elseif ltype == :T8A # alternating ending in (0, 1, 0)
+        for i in n : -1 : 1
+            if (i + 1) % 3 == n % 3
+                lambda[i] = 1
+            else lambda[i] = 0
+            end
+        end
+    elseif ltype == :T8B # alternating ending in (1, 0, 0)
+        for i in n : -1 : 1
+            if (i + 2) % 3 == n % 3
+                lambda[i] = 1
+            else lambda[i] = 0
+            end
+        end
     elseif ltype == :T9 # (-1, 0,...,0, 1)
         lambda[1] = -1
         lambda[end] = 1
@@ -86,6 +106,14 @@ function modify_lambda(data::DOMPData, ltype::Symbol)::DOMPData
         for i in 1 : n
             lambda[i] = -1
         end
+    elseif ltype == :T13 # (1, -1, 1, -1, ...)
+        for i in 1 : n
+            lambda[i] = 2 * (i % 2) - 1
+        end
+    elseif ltype == :T14 # (-1, 1, -1, 1, ...)
+        for i in 1 : n
+            lambda[i] = 2 * ((i + 1)% 2) - 1
+        end
     end
     return DOMPData(D, p, lambda)
 end
@@ -95,23 +123,26 @@ function strong_branching(data::DOMPData, parent::BbNode, ub::Int64, pseudo::Mat
     ncols = size(data.D, 2)
     # println("branching with x = $([y for y in x if abs(y) > 1e-5])")
     # println("branching with z = $([y for y in z if abs(y) > 1e-5])")
-    fract = [(i, abs(y - round(y)), y) for (i, y) in enumerate(z)]
-    filter!(u -> u[2] > 1e-6, fract)
+    xy = [(i, x[i], z[i], abs(x[i] - round(x[i])), abs(z[i] - round(z[i]))) for i in 1 : nrows]
+    filter!(u -> u[4] > 1e-6, xy)
+    sort!(xy; lt = (u, v) -> u[5] - v[5] > 1e-6 || (abs(u[5] - v[5]) <= 1e-6 && u[4] > v[4]))
+    # fract = [(i, abs(x[i] - round(x[i])), y) for (i, y) in enumerate(z) if y >= 1e-6 && abs(x[i] - round(x[i])) > 1e-6]
     # empty!(fract)
-    if isempty(fract)
-        fract = [(i, abs(y - round(y)), y) for (i, y) in enumerate(x)]
-        filter!(u -> u[2] > 1e-6, fract)
-    end        
-    sort!(fract; lt = (u, v) -> u[2] > v[2])
-    if size(fract, 1) > 5
-        resize!(fract, 5)
+    # if isempty(fract)
+    #     fract = [(i, abs(y - round(y)), y) for (i, y) in enumerate(x)]
+    #     filter!(u -> u[2] > 1e-6, fract)
+    # end        
+    # sort!(fract; lt = (u, v) -> u[2] > v[2])
+    if size(xy, 1) > 5
+        resize!(xy, 5)
     end
+    absgap = ub - parent.lb
     pcosts = Tuple{PseudoCost, Union{Nothing, BbNode}, Union{Nothing, BbNode}}[]
     fathomed = falses(ncols)
-    for (i, d, v) in fract
+    for (i, xi, zi, vi, wi) in xy
         minpc = minimum(@view pseudo[i, :])
         # println("min pc = $minpc")
-        if minpc >= 50.0
+        if minpc >= 2 * absgap
             push!(pcosts, (PseudoCost(i, pseudo[i, 1], pseudo[i, 2]), nothing, nothing))
         else
             lbound = rbound = 0
@@ -130,11 +161,11 @@ function strong_branching(data::DOMPData, parent::BbNode, ub::Int64, pseudo::Mat
                 end
                 push!(newbbnode, new_bbnode)
             end
-            pcdown = (lbound - parent.lb) / v
-            pcup = (rbound - parent.lb) / (1 - v)
+            pcdown = (lbound - parent.lb) / xi
+            pcup = (rbound - parent.lb) / (1 - xi)
             pc = PseudoCost(i, pcdown, pcup)
-            pseudo[i, 1] = (pseudo[i, 1] + pcdown) / 2
-            pseudo[i, 2] = (pseudo[i, 2] + pcup) / 2
+            pseudo[i, 1] = pcdown#(pseudo[i, 1] + pcdown) / 2
+            pseudo[i, 2] = pcup#(pseudo[i, 2] + pcup) / 2
             push!(pcosts, (pc, newbbnode[1], newbbnode[2]))
             if max(lbound, rbound) >= ub 
                 fathomed[i] = true 
@@ -235,4 +266,13 @@ function get_assignment_minimum_support(data::DOMPData, x::Vector{Vector{Int64}}
         end
     end
     return y
+end
+
+function score(data::DOMPData, k::Int64)::Int64
+    nrows = size(data.D, 1)
+    if k <= data.p return 0
+    elseif data.lambda[k] > 0 return k - data.p
+    elseif data.lambda[k] < 0 return nrows - k
+    else return 0
+    end
 end

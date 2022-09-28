@@ -56,9 +56,9 @@ function iterated_local_search(data::DOMPData, xlb::Vector{Vector{Int64}})
     outset = [j for j in 1 : ncols if best[j] == 0]
     nonsuccess_ils = 0
     first = true
-    max_shakes = 2
+    max_shakes = 3
     num_shakes = 1
-    max_unsuccess = 5
+    max_unsuccess = 10
     while nonsuccess_ils < max_unsuccess
         inset_curr = deepcopy(inset)
         outset_curr = deepcopy(outset)
