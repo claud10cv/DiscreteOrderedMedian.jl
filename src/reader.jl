@@ -32,7 +32,8 @@ function read_deleplanque(filename::String)::DOMPData
             end
         end
     end
-    return DOMPData(D, p, lambda)
+    uD = unique(sort(vec(D)))
+    return DOMPData(D, p, lambda, uD)
 end
 
 function read_orlib(filename::String)::DOMPData
@@ -66,7 +67,34 @@ function read_orlib(filename::String)::DOMPData
     for i in 1 : n, j in 1 : n
         D[i, j] = D_orlib[i, j + n]
     end
-    DOMPData(D, p, rand(1 : 100, n))
+    uD = unique(sort(vec(D)))
+    DOMPData(D, p, rand(1 : 100, n), uD)
+end
+
+function write_instance(data::DOMPData, filename::String)::Nothing
+    name = split(filename, ['.', '/']; keepempty = false)[end - 1]
+    nrows = size(data.D, 1)
+    ncols = size(data.D, 2)
+    open(filename, "w") do f
+        println(f, "NAME : $name")
+        println(f, "COMMENT : Cherkesly, Contardo & Gruson 2022")
+        println(f, "TYPE : DOMP")
+        println(f, "DIMENSION : $ncols")
+        println(f, "DISPLAY_DATA_TYPE : NO_DISPLAY")
+        println(f, "OPEN_FACILITIES : $(data.p)")
+        println(f, "COST_SECTION")
+        for i in 1 : nrows
+            for j in 1 : ncols
+                print(f, " $(data.D[i, j])")
+            end
+            println(f)
+        end
+        println(f, "LAMBDA_SECTION")
+        for i in 1 : nrows
+            println(f, "$i $(data.lambda[i])")
+        end
+    end
+    return
 end
 
 function floyd!(D::Matrix{Int64})::Matrix{Int64}
@@ -80,6 +108,3 @@ function floyd!(D::Matrix{Int64})::Matrix{Int64}
     end
     return D
 end
-
-
-

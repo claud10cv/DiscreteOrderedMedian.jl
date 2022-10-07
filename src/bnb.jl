@@ -25,7 +25,7 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
     global_ub = lsub
     global_xub = xls
     it = 0
-    root_gap = ceil(100 * (global_ub - global_lb) / abs(global_ub) * 100) / 100
+    root_gap = ceil(100 * (global_ub - global_lb) / abs(global_ub + 1e-10) * 100) / 100
     t1 = time_ns()
     elapsed = ceil(100 * (t1 - t0) * 1e-9) / 100
     queue = PriorityQueue{BbNode, Int64}()
@@ -34,12 +34,22 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
     println("$it,$global_lb,$global_ub,$root_gap,$elapsed,$root_fract,--,--,0,$(length(queue))")
     if root.lb >= root.ub return root.lb, root.ub, root.xlb, root.xub end
     pseudocosts = zeros(ncols, 2)
+    next_restart = 20
+    nrestarts = 0
     while !isempty(queue) && elapsed < time_limit
         bbnode = dequeue!(queue)
-        global_lb = bbnode.lb
+        global_lb = max(global_lb, bbnode.lb)
         global_xlb = bbnode.xlb
-        gap = ceil(((global_ub - global_lb) / abs(global_ub) * 100) * 100) / 100
+        gap = ceil(((global_ub - global_lb) / abs(global_ub + 1e-10) * 100) * 100) / 100
         if bbnode.lb >= global_ub continue end
+        if it == next_restart && nrestarts < 2
+            nrestarts += 1
+            println("performing restart...")
+            empty!(queue)
+            enqueue!(queue, root => root.lb)
+            next_restart *= 5
+            continue
+        end
         it += 1
         # find the most fractional variable
         # val, j = find_most_fractional(bbnode.xlb...)
@@ -91,14 +101,14 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
         fract = 0
     else
         bbnode, bestbound = peek(queue)
-        global_lb = bestbound
+        global_lb = max(global_lb, bestbound)
         depth = length(bbnode.branches)
         fract = length([i for i in 1 : ncols if abs(bbnode.xlb[1][i] - round(bbnode.xlb[1][i])) > 1e-6])
     end 
     it += 1
     t1 = time_ns()
     elapsed = ceil(100 * (t1 - t0) * 1e-9) / 100
-    gap = ceil(Int64, 100 * (global_ub - global_lb) / abs(global_ub) * 100) / 100
+    gap = ceil(Int64, 100 * (global_ub - global_lb) / abs(global_ub + 1e-10) * 100) / 100
     println("$it,$global_lb,$global_ub,$(gap),$elapsed,$fract,--,--,$depth,$(length(queue))")
     return global_lb, global_ub, global_xlb, global_xub
 end

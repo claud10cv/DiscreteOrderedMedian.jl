@@ -1,6 +1,6 @@
 using LinearAlgebra
-function generate_euclidean(n::Int64, p::Int64, itype::Symbol)::DOMPData
-    lambda = rand(0 : 1000, n)
+function generate_euclidean(n::Int64, p::Int64, maxx::Int64 = 100, maxy::Int64 = 100, itype::Symbol = :pmedian)::DOMPData
+    lambda = rand(1 : 1000, n)
     if itype == :pcentre
         lambda = zeros(Int64, n)
         lambda[end] = 1
@@ -14,13 +14,19 @@ function generate_euclidean(n::Int64, p::Int64, itype::Symbol)::DOMPData
             lambda[j] = 1
         end
     end
-    pos = rand(1 : 10000, n, 2)
+    pos = zeros(Int64, n, 2)
+    for i in 1 : n
+        pos[i, 1] = rand(0 : maxx)
+        pos[i, 2] = rand(0 : maxy)
+    end
     D = zeros(Int64, n, n)
     for i in 1 : n, j in 1 : n
         diff = pos[i, :] - pos[j, :]
         D[i, j] = ceil(Int64, sqrt(dot(diff, diff)))
+        D[i, j] = max(1, D[i, j])
     end
-    DOMPData(D, p, lambda)
+    uD = unique(sort(vec(D)))
+    DOMPData(D, p, lambda, uD)
 end
 
 function generate_rand(n::Int64, p::Int64, itype::Symbol)::DOMPData
@@ -40,5 +46,6 @@ function generate_rand(n::Int64, p::Int64, itype::Symbol)::DOMPData
     elseif itype == :random
     end
     D = rand(10000 : 100000, n, n)
-    DOMPData(D, p, lambda)
+    uD = unique(sort(vec(D)))
+    DOMPData(D, p, lambda, uD)
 end

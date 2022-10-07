@@ -3,7 +3,7 @@ function compute_sorted_distances(data::DOMPData, x::Vector{Int64})::Vector{Int6
     ncols = size(data.D, 2)
     open = [j for j in 1 : ncols if x[j] == 1]
     @assert(!isempty(open), "empty vector!")
-    d = [(!isempty(open) ? minimum(data.D[i, open]) : 1000000000000) for i in 1 : nrows]
+    d = [(!isempty(open) ? minimum(data.D[i, open]) : round(Int64, 1e-4 * typemax(Int64))) for i in 1 : nrows]
     return sort(d)
 end
 
@@ -115,7 +115,25 @@ function modify_lambda(data::DOMPData, ltype::Symbol)::DOMPData
             lambda[i] = 2 * ((i + 1)% 2) - 1
         end
     end
-    return DOMPData(D, p, lambda)
+    uD = unique(sort(vec(D)))
+    return DOMPData(D, p, lambda, uD)
+end
+
+function find_index_uD(data::DOMPData, d::Int64)::Int64
+    l = 1
+    u = size(data.uD, 1)
+    while l < u
+        m = ceil(Int64, (l + u) / 2)
+        if data.uD[m] == d
+            return m
+        elseif data.uD[m] < d
+            l = m
+        else
+            u = m - 1
+        end
+    end
+    @assert(l == u, "binary search gone too far")
+    return l
 end
 
 function strong_branching(data::DOMPData, parent::BbNode, ub::Int64, pseudo::Matrix{Float64}, x::Vector{Float64}, z::Vector{Float64})::Vector{Tuple{PseudoCost, Union{Nothing, BbNode}, Union{Nothing, BbNode}}}
@@ -125,7 +143,11 @@ function strong_branching(data::DOMPData, parent::BbNode, ub::Int64, pseudo::Mat
     # println("branching with z = $([y for y in z if abs(y) > 1e-5])")
     xy = [(i, x[i], z[i], abs(x[i] - round(x[i])), abs(z[i] - round(z[i]))) for i in 1 : nrows]
     filter!(u -> u[4] > 1e-6, xy)
-    sort!(xy; lt = (u, v) -> u[5] - v[5] > 1e-6 || (abs(u[5] - v[5]) <= 1e-6 && u[4] > v[4]))
+    coefs = [2, 1]
+    eps = 1e-5
+    # sort!(xy; lt = (u, v) -> u[5] - v[5] > 1e-6 || (abs(u[5] - v[5]) <= 1e-6 && u[4] > v[4]))
+    sort!(xy; lt = (u, v) -> (pseudo[u[1], 1] + pseudo[u[1], 2] + eps) * dot(coefs, u[4 : 5]) > (pseudo[v[1], 1] + pseudo[v[1], 2] + eps) * dot(coefs, v[4 : 5]))
+    @assert(!isempty(xy), "empty candidate list!, x = $x, parent = $parent")
     # fract = [(i, abs(x[i] - round(x[i])), y) for (i, y) in enumerate(z) if y >= 1e-6 && abs(x[i] - round(x[i])) > 1e-6]
     # empty!(fract)
     # if isempty(fract)
@@ -133,16 +155,17 @@ function strong_branching(data::DOMPData, parent::BbNode, ub::Int64, pseudo::Mat
     #     filter!(u -> u[2] > 1e-6, fract)
     # end        
     # sort!(fract; lt = (u, v) -> u[2] > v[2])
-    if size(xy, 1) > 5
-        resize!(xy, 5)
+    candsize = 5
+    if size(xy, 1) > candsize
+        resize!(xy, candsize)
     end
     absgap = ub - parent.lb
     pcosts = Tuple{PseudoCost, Union{Nothing, BbNode}, Union{Nothing, BbNode}}[]
-    fathomed = falses(ncols)
+    fathomed = zeros(Int64, ncols)#falses(ncols)
     for (i, xi, zi, vi, wi) in xy
         minpc = minimum(@view pseudo[i, :])
         # println("min pc = $minpc")
-        if minpc >= 2 * absgap
+        if minpc >= 1 * absgap
             push!(pcosts, (PseudoCost(i, pseudo[i, 1], pseudo[i, 2]), nothing, nothing))
         else
             lbound = rbound = 0
@@ -164,16 +187,18 @@ function strong_branching(data::DOMPData, parent::BbNode, ub::Int64, pseudo::Mat
             pcdown = (lbound - parent.lb) / xi
             pcup = (rbound - parent.lb) / (1 - xi)
             pc = PseudoCost(i, pcdown, pcup)
-            pseudo[i, 1] = pcdown#(pseudo[i, 1] + pcdown) / 2
-            pseudo[i, 2] = pcup#(pseudo[i, 2] + pcup) / 2
+            pseudo[i, 1] = (pseudo[i, 1] + pcdown) / 2
+            pseudo[i, 2] = (pseudo[i, 2] + pcup) / 2
             push!(pcosts, (pc, newbbnode[1], newbbnode[2]))
-            if max(lbound, rbound) >= ub 
-                fathomed[i] = true 
-                break
-            end
+            if lbound >= ub fathomed[i] += 1 end
+            if rbound >= ub fathomed[i] += 1 end
+            # if max(lbound, rbound) >= ub 
+            #     fathomed[i] = true 
+            #     break
+            # end
         end
     end
-    sort!(pcosts; lt = (u, v) -> fathomed[u[1].i] && !fathomed[v[1].i] || (fathomed[u[1].i] == fathomed[v[1].i] && min(3 * u[1].down, u[1].up) > min(3 * v[1].down, v[1].up)))
+    sort!(pcosts; lt = (u, v) -> fathomed[u[1].i] > fathomed[v[1].i] || (fathomed[u[1].i] == fathomed[v[1].i] && u[1].down + u[1].up > v[1].down + v[1].up))
     return pcosts
 end
 
@@ -201,8 +226,7 @@ end
 function get_extreme_assignment_vectors(data::DOMPData, x::Vector{Vector{Int64}}, d::Vector{Vector{Int64}}, ropt::Vector{Int64})::Vector{Vector{Int64}}
     nrows = size(data.D, 1)
     rinds = [i for i in 1 : nrows if data.lambda[i] != 0]
-    score = u -> (u <= data.p ? 0 : (data.lambda[u] > 0 ? u : nrows - u))
-    sort!(rinds; lt = (u, v) -> score(u) > score(v))
+    sort!(rinds; lt = (u, v) -> score(data, u, ropt) > score(data, v, ropt))
     y = [Int64[] for i in 1 : nrows]
     for (k, i) in enumerate(rinds)
         if !isempty(y[i]) continue
@@ -268,11 +292,12 @@ function get_assignment_minimum_support(data::DOMPData, x::Vector{Vector{Int64}}
     return y
 end
 
-function score(data::DOMPData, k::Int64)::Int64
+function score(data::DOMPData, k::Int64, d::Vector{Int64})::Int64
     nrows = size(data.D, 1)
+    m = 1#abs(d[k] * data.lambda[k])
     if k <= data.p return 0
-    elseif data.lambda[k] > 0 return k - data.p
-    elseif data.lambda[k] < 0 return nrows - k
+    elseif data.lambda[k] > 0 return m * (k - data.p + 1)
+    elseif data.lambda[k] < 0 return m * (nrows - k + 1)
     else return 0
     end
 end

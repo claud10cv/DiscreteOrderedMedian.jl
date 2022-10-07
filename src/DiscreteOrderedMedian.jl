@@ -1,14 +1,18 @@
 module DiscreteOrderedMedian
     include("instancegen.jl")
-    include("reader.jl")
     include("struct.jl")
+    include("reader.jl")
     include("localsearch.jl")
     include("util.jl")
     include("setcover.jl")
+    include("setpacking.jl")
     include("dompk.jl")
     include("domplb.jl")
     include("bnb.jl")
+    include("domp2.jl")
 
+    const MOI = MathOptInterface
+    
     precompile(setcover, (Matrix{Bool}, Int64, Int64,))
     precompile(setpacking, (Matrix{Bool}, Int64, Int64,))
     precompile(dompk_pos, (DOMPData, BbNode, Int64, Int64, Int64, Vector{Int64},))

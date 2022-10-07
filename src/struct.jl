@@ -2,6 +2,7 @@ struct DOMPData
     D::Matrix{Int64}
     p::Int64
     lambda::Vector{Int64}
+    uD::Vector{Int64} # unique values of D, sorted
 end
 
 struct BranchInfo

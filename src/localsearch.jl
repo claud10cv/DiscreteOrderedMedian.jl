@@ -42,6 +42,7 @@ function iterated_local_search(data::DOMPData, xlb::Vector{Vector{Int64}})
     ncols = size(newdata.D, 2)
     best = Int64[]
     ub = typemax(Int64)
+    # println("x = $xlb")
     for x in xlb
         if !isempty(x)
             d = compute_sorted_distances(newdata, x)
@@ -110,7 +111,8 @@ function reduce_data_for_ls(data::DOMPData, xlb::Vector{Vector{Int64}})::Tuple{D
     ncols = size(data.D, 2)
     map = [j for j in 1 : ncols if sum([x[j] for x in xlb if !isempty(x)]) > 0]
     D = data.D[:, map]
-    data = DOMPData(D, data.p, data.lambda)
+    uD = unique(sort(vec(D)))
+    data = DOMPData(D, data.p, data.lambda, uD)
     xk = [isempty(x) ? Int64[] : x[map] for x in xlb]
     return data, xk, map
 end 
