@@ -143,7 +143,7 @@ function strong_branching(data::DOMPData, parent::BbNode, ub::Int64, pseudo::Mat
     # println("branching with z = $([y for y in z if abs(y) > 1e-5])")
     xy = [(i, x[i], z[i], abs(x[i] - round(x[i])), abs(z[i] - round(z[i]))) for i in 1 : nrows]
     filter!(u -> u[4] > 1e-6, xy)
-    coefs = [2, 1]
+    coefs = [1, 2]
     eps = 1e-5
     # sort!(xy; lt = (u, v) -> u[5] - v[5] > 1e-6 || (abs(u[5] - v[5]) <= 1e-6 && u[4] > v[4]))
     sort!(xy; lt = (u, v) -> (pseudo[u[1], 1] + pseudo[u[1], 2] + eps) * dot(coefs, u[4 : 5]) > (pseudo[v[1], 1] + pseudo[v[1], 2] + eps) * dot(coefs, v[4 : 5]))

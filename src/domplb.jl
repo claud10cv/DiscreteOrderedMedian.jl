@@ -200,15 +200,15 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     for k in ordering
         # nit += 1
         pdelta = delta[k] / sdelta * 100
-        sk = 1#score(data, k, global_dists)
+        sk = score(data, k, global_dists)
         @assert(!isempty(bbnode.xk[k]), "empty solution vector!")
         @assert(sum(bbnode.xk[k]) == data.p, "solution vector does not contain p points: $(bbnode.xk[k])")
         if !isempty(bbnode.xk[k]) && sum(bbnode.xk[k]) > 0
-            xlb_all += 1 * bbnode.xk[k]
-            count_all += 1
+            xlb_all += sk * bbnode.xk[k]
+            count_all += sk
             if delta[k] > 1 + 1e-5
-                xlb_ub += sk * pdelta * bbnode.xk[k]
-                count_diff += sk * pdelta
+                xlb_ub += sk * bbnode.xk[k]
+                count_diff += sk
                 # fractionality = maximum(xlb_ub / count_diff - round.(Int64, xlb_ub / count_diff))
                 # println("fractionality = $fractionality")
                 # if fractionality > 1e-6 break end
