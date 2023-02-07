@@ -40,9 +40,17 @@ function iterated_local_search(data::DOMPData, xlb::Vector{Vector{Int64}})
     map = collect(1 : size(data.D, 2))
     nrows = size(newdata.D, 1)
     ncols = size(newdata.D, 2)
-    best = Int64[]
+    best = zeros(Int64, ncols)
     ub = typemax(Int64)
     # println("x = $xlb")
+    let
+        for k in 1 : data.p
+            best[k] = 1
+        end
+        d = compute_sorted_distances(newdata, best)
+        val = compute_weighted_cost(newdata, d)
+        ub = val
+    end
     for x in xlb
         if !isempty(x)
             d = compute_sorted_distances(newdata, x)
