@@ -230,6 +230,9 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     bbnode.lb = lb
     bbnode.xub = xub
     bbnode.ub = ub
+    # for r in 1 : nrows
+    #     println("x[$r] = $(xk[r]), d[$r] = $(dk[r][r])")
+    # end
     # println("lower bound of $(bbnode.lb)")
     return
     # return lb, ub, xlb, xub

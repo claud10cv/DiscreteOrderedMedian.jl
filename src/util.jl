@@ -33,6 +33,20 @@ function modify_lambda(data::DOMPData, ltype::Symbol)::DOMPData
         end
     elseif ltype == :T2 #centre
         lambda[end] = 1
+    elseif ltype == :T2A
+        lambda[end] = -1
+    elseif ltype == :T2B
+        lambda[p + 1] = 1
+    elseif ltype == :T2C
+        lambda[p + 1] = -1
+    elseif ltype == :T2D
+        lambda[round(Int64, n / 2)] = 1
+    elseif ltype == :T2E
+        lambda[round(Int64, n / 2)] = -1
+    elseif ltype == :T2F
+        lambda[ceil(Int64, 3 * n / 4)] = 1
+    elseif ltype == :T2G
+        lambda[ceil(Int64, 3 * n / 4)] = -1
     elseif ltype == :T3 #centrum
         for i in ceil(Int64, n / 2) + 1 : n
             lambda[i] = 1
