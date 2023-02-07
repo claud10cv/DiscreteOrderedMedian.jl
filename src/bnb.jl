@@ -1,5 +1,5 @@
 using DataStructures
-function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vector{Float64}, Vector{Float64}}, Vector{Int64}}
+function bnb(data::DOMPData; time_limit = 7200)::Result
     println("ITERATION,BEST_BOUND,BKS,GAP(%),T(s),FRACT,BR_VAR,BR_VAL,DEPTH,NODES_LEFT")
     t0 = time_ns()
     nrows = size(data.D, 1)
@@ -32,7 +32,7 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
     push!(queue, root => root.lb)
     root_fract = length([i for i in 1 : ncols if abs(root.xlb[1][i] - round(root.xlb[1][i])) > 1e-6])
     println("$it,$global_lb,$global_ub,$root_gap,$elapsed,$root_fract,--,--,0,$(length(queue))")
-    if root.lb >= root.ub return root.lb, root.ub, root.xlb, root.xub end
+    if root.lb >= root.ub return Result(root.lb, root.ub, root.xlb, root.xub) end
     pseudocosts = zeros(ncols, 2)
     next_restart = 20
     nrestarts = 0
@@ -110,7 +110,7 @@ function bnb(data::DOMPData; time_limit = 7200)::Tuple{Int64, Int64, Tuple{Vecto
     elapsed = ceil(100 * (t1 - t0) * 1e-9) / 100
     gap = ceil(Int64, 100 * (global_ub - global_lb) / abs(global_ub + 1e-10) * 100) / 100
     println("$it,$global_lb,$global_ub,$(gap),$elapsed,$fract,--,--,$depth,$(length(queue))")
-    return global_lb, global_ub, global_xlb, global_xub
+    return Result(global_lb, global_ub, global_xlb, global_xub)
 end
         
 
