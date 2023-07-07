@@ -1,5 +1,3 @@
-using JuMP, CPLEX, MathOptInterface
-
 function setcover(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector{Int64})::Vector{Int64}
     nrows = size(coverage, 1)
     ncols = size(coverage, 2)
@@ -65,7 +63,7 @@ function setcover_exact(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector
     end
     @objective(m, Max, dot(supp, x))
     # @objective(m, Min, dot(rand(0 : 1, ncols), x))
-    @constraint(m, [i in 1 : nrows], JuMP.dot(coverage[i, :], x) - y[i] >= 0)
+    @constraint(m, [i in 1 : nrows], dot(coverage[i, :], x) - y[i] >= 0)
     @constraint(m, sum(y) >= k)
     @constraint(m, sum(x) <= p)
     optimize!(m)

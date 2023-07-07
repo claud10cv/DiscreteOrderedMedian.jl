@@ -1,5 +1,3 @@
-using JuMP, CPLEX, MathOptInterface, Graphs
-
 function setpacking(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector{Int64})::Vector{Int64}
     nrows = size(coverage, 1)
     ncols = size(coverage, 2)
@@ -95,7 +93,7 @@ function setpacking_exact(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vect
     # println("supp = $supp")
     @objective(m, Max, dot(supp, x))
     nonempty_rows = [i for i in 1 : nrows if sum(@view coverage[i, :]) > 0]
-    @constraint(m, [i in nonempty_rows], JuMP.dot(coverage[i, :], x) - min(p, sum(@view coverage[i, :])) * y[i] <= 0)
+    @constraint(m, [i in nonempty_rows], dot(coverage[i, :], x) - min(p, sum(@view coverage[i, :])) * y[i] <= 0)
     @constraint(m, sum(y) <= k)
     @constraint(m, sum(x) >= p)
     if !isempty(conflict)

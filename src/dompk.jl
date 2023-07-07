@@ -31,40 +31,6 @@ function dompk_pos(data::DOMPData,
     end
     lbidx = find_index_uD(data, lb)
     ubidx = find_index_uD(data, ub)
-    # newub = lb
-    # step = 1
-    # while newub < ub
-    #     # println("lb, ub = $lb, $newub")
-    #     r = newub
-    #     cov, map, numcov = build_coverage(data, bbnode, r, k, true)
-    #     sol = setcover(cov, k - numcov, data.p - nopen, supp[map])
-    #     if !isempty(sol)
-    #         ub = newub
-    #         for j in 1 : ncols
-    #             y[j] = 0
-    #         end
-    #         for j in map[sol]
-    #             y[j] = 1
-    #         end
-    #         xub = x + y
-    #         if sum(xub) < data.p
-    #             diff = data.p - sum(xub)
-    #             others = [i for i in 1 : ncols if !in(i, closed) && xub[i] == 0]
-    #             for i in others[1 : diff]
-    #                 xub[i] = 1
-    #             end
-    #         end
-    #         break
-    #     else
-    #         # println("infeasible r = $lb")
-    #         lbidx += 1
-    #         lb = data.uD[lbidx]
-    #         ubidx = min(ubidx + step, size(data.uD, 1))
-    #         newub = data.uD[ubidx]
-    #         step *= 2
-    #     end
-    # end
-    # println("starting BS from lb = $lb, ub = $ub")
     while lbidx < ubidx
         ridx = floor(Int64, (lbidx + ubidx) / 2)
         r = data.uD[ridx]
@@ -150,42 +116,14 @@ function dompk_neg(data::DOMPData,
     end
     lbidx = find_index_uD(data, lb)
     ubidx = find_index_uD(data, ub)
-    # newlb = ub
-    # step = 1
-    # while newlb > lb
-    #     ridx = 
-    #     r = newlb
-    #     cov, map, numcov = build_coverage(data, bbnode, r - 1, k - 1, false)
-    #     sol = setpacking(cov, k - 1 - numcov, data.p - nopen, supp[map])
-    #     if !isempty(sol)
-    #         # println("feas at r = $r")
-    #         lb = r
-    #         for j in 1 : ncols
-    #             y[j] = 0
-    #         end
-    #         for j in map[sol]
-    #             y[j] = 1
-    #         end
-    #         xlb = x + y
-    #         break
-    #     else
-    #         # println("infeasible at r = $r")
-    #         ubidx 
-    #         ub = r - 1
-    #         newlb = max(lb, newlb - step)
-    #         step *= 2
-    #     end
-    # end
-    # println("starting BS with lb = $lb, ub = $ub")
     while lbidx < ubidx
         ridx = ceil(Int64, (lbidx + ubidx) / 2)
         r = data.uD[ridx]
+        rprev = ridx == 1 ? 0 : data.uD[ridx - 1]
         # println("lb = $lb, ub = $ub, r = $r")
-        cov, map, numcov = build_coverage(data, bbnode, r - 1, k - 1, false)
+        cov, map, numcov = build_coverage(data, bbnode, rprev, k - 1, false)
         sol = setpacking(cov, k - 1 - numcov, data.p - nopen, supp[map])
         if !isempty(sol)
-            # println("feasible r = $r")
-            # println("sol = $(map[sol]), open = $open")
             lbidx = ridx
             lb = r
             for j in 1 : ncols
@@ -197,18 +135,14 @@ function dompk_neg(data::DOMPData,
             xlb = x + y# println(", I")
             @assert(sum(xlb) == data.p)
         else
-            # println("infeasible r = $r")
             ubidx = ridx - 1
             ub = data.uD[ridx - 1]
-            # println(", F")
         end
     end
     if sum(xlb) != data.p
-        # println("not found anything")
         cov, map, numcov = build_coverage(data, bbnode, lb - 1, k - 1, false)
         sol = setpacking(cov, k - 1 - numcov, data.p - nopen, supp[map])
         if isempty(sol) return lb, zeros(Int64, ncols) end
-        # println("sol = $(map[sol]), open = $open")
         for j in 1 : ncols
             y[j] = 0
         end

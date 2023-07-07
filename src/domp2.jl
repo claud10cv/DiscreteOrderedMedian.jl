@@ -1,5 +1,3 @@
-using JuMP, MathOptInterface, CPLEX
-
 function domp2(data::DOMPData; time_limit = 7200)::Tuple{Float64, Int64, Vector{Int64}}
     d = sort(unique(data.D))
     if d[1] != 0

@@ -1,4 +1,12 @@
 module DiscreteOrderedMedian
+    using DataStructures
+    using JuMP
+    using MathOptInterface
+    using CPLEX
+    using LinearAlgebra
+    using Random
+    using Graphs
+
     include("instancegen.jl")
     include("struct.jl")
     include("reader.jl")

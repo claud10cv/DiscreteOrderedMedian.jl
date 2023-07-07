@@ -1,4 +1,3 @@
-using DataStructures
 function bnb(data::DOMPData; time_limit = 7200)::Result
     println("ITERATION,BEST_BOUND,BKS,GAP(%),T(s),FRACT,BR_VAR,BR_VAL,DEPTH,NODES_LEFT")
     t0 = time_ns()

@@ -1,5 +1,3 @@
-using DataStructures, Random
-
 function local_search!(data::DOMPData, ub::Int64, inset::Vector{Int64}, outset::Vector{Int64})::Int64
     mod = true
     ncols = size(data.D, 2)

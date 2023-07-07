@@ -10,6 +10,7 @@ end
 
 function test_toy(seed::Int64)::Bool
     data = DiscreteOrderedMedian.generate_euclidean(10, 5, 1000, 1000, :pmedian; seed = seed)
+    data = DiscreteOrderedMedian.modify_lambda(data, :T12)
     res = DiscreteOrderedMedian.bnb(data)
     return feasible_result(res)
 end
@@ -17,9 +18,9 @@ end
 @testset "Random Test" begin
     for seed in 1 : 10
         print("running test for seed $seed...")
-        redirect_stdout(devnull) do
+        # redirect_stdout(devnull) do
             @test test_toy(seed)
-        end
+        # end
         println("done!")
     end
 end

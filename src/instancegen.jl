@@ -1,4 +1,3 @@
-using LinearAlgebra, Random
 function generate_euclidean(n::Int64, p::Int64, maxx::Int64 = 100, maxy::Int64 = 100, itype::Symbol = :pmedian; seed::Int64 = 0)::DOMPData
     rng = MersenneTwister(seed)
     lambda = rand(rng, 1 : 1000, n)
