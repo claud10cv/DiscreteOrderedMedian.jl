@@ -16,7 +16,7 @@ function test_toy(seed::Int64)::Bool
 end
 
 @testset "Random Test" begin
-    for seed in 1 : 10
+    for seed in 1 : 1000
         print("running test for seed $seed...")
         # redirect_stdout(devnull) do
             @test test_toy(seed)

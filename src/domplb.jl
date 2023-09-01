@@ -1,4 +1,4 @@
-function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}, global_xub::Vector{Int64})::Nothing#Tuple{Int64, Int64, Vector{Float64}, Vector{Int64}}
+function domp_lb!(data::DOMPData, params::Parameters, bbnode::BbNode, parent::Union{BbNode, Nothing}, global_xub::Vector{Int64})::Nothing#Tuple{Int64, Int64, Vector{Float64}, Vector{Int64}}
     lb = 0
     lk = ReentrantLock()
     global_dists = compute_sorted_distances(data, global_xub)
@@ -38,13 +38,15 @@ function domp_lb!(data::DOMPData, bbnode::BbNode, parent::Union{BbNode, Nothing}
     support = zeros(Int64, ncols)
     if !isempty(global_xub) support = deepcopy(global_xub) end
     ordering = [i for i in 1 : nrows if data.lambda[i] != 0]
-    sort!(ordering; lt = (u, v) -> score(data, u, global_dists) > score(data, v, global_dists))
+    if params.symm_break
+        sort!(ordering; lt = (u, v) -> score(data, u, global_dists) > score(data, v, global_dists))
+    end
     if !isnothing(parent) support = deepcopy(parent.xub) end
     fathomed = false
     Threads.@threads for k in ordering
         if currdelta >= currgap || fathomed continue end
         # println("starting lb for k = $k")
-        if !isnothing(parent) && can_recycle_solution(bbnode, parent.xk[k])
+        if params.warm_starts && !isnothing(parent) && can_recycle_solution(bbnode, parent.xk[k])
             # println("can recycle solution $k = $(parent.xk[k])")
             # val, bbnode.xk[k] = dompk_pos(data, bbnode, k, bbnode.ropt[k], k == nrows ? maxd : bbnode.ropt[k + 1])
             # d = compute_sorted_distances(data, parent.xk[k])
