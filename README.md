@@ -20,3 +20,5 @@ julia> data = DiscreteOrderedMedian.modify_lambda(data, :T1)
 ```julia
 julia> DiscreteOrderedMedian.bnb(data)
 ```
+
+julia --project="/path/to/Rep" ./path/to/script_beas.jl "/path/to/data/file"
