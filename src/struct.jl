@@ -34,14 +34,5 @@ struct Result
     xub::Vector{Int64}
 end
 
-struct Parameters
-    warm_starts::Bool
-    var_fixing::Bool
-    primal_heur::Bool
-    symm_break::Bool
-end
-
 BbNode() = BbNode(BranchInfo[], 0, typemax(Int64), (Float64[], Float64[]), Int64[], Vector{Vector{Int64}}(), Int64[])
 BbNode(branches::Vector{BranchInfo}) = BbNode(branches, 0, typemax(Int64), (Float64[], Float64[]), Int64[], Vector{Vector{Int64}}(), Int64[])
-
-Parameters() = Parameters(true, true, true, true)

@@ -130,6 +130,8 @@ function modify_lambda(data::DOMPData, ltype::Symbol)::DOMPData
         end
     end
     uD = unique(sort(vec(D)))
+    # println(D)
+    # println(lambda)
     return DOMPData(D, p, lambda, uD)
 end
 

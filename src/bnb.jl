@@ -1,4 +1,4 @@
-function bnb(data::DOMPData, params::Parameters = Parameters(); time_limit = 7200)::Result
+function bnb(data::DOMPData; time_limit = 7200)::Result
     println("ITERATION,BEST_BOUND,BKS,GAP(%),T(s),FRACT,BR_VAR,BR_VAL,DEPTH,NODES_LEFT")
     t0 = time_ns()
     nrows = size(data.D, 1)
@@ -15,16 +15,14 @@ function bnb(data::DOMPData, params::Parameters = Parameters(); time_limit = 720
     end
     global_dists = compute_sorted_distances(data, global_xub)
     global_ub = compute_weighted_cost(data, global_dists)
-    domp_lb!(data, params, root, nothing, global_xub)
+    domp_lb!(data, root, nothing, global_xub)
     global_ub = root.ub
     global_lb = root.lb
     global_xlb = root.xlb
     global_xub = root.xub
-    if params.primal_heur
-        xls, lsub = iterated_local_search(data, root.xk)
-        global_ub = lsub
-        global_xub = xls
-    end
+    xls, lsub = iterated_local_search(data, root.xk)
+    global_ub = lsub
+    global_xub = xls
     it = 0
     root_gap = ceil(100 * (global_ub - global_lb) / abs(global_ub + 1e-10) * 100) / 100
     t1 = time_ns()

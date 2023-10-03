@@ -119,6 +119,7 @@ function dompk_neg(data::DOMPData,
     while lbidx < ubidx
         ridx = ceil(Int64, (lbidx + ubidx) / 2)
         r = data.uD[ridx]
+        #rprev = r-1
         rprev = ridx == 1 ? 0 : data.uD[ridx - 1]
         # println("lb = $lb, ub = $ub, r = $r")
         cov, map, numcov = build_coverage(data, bbnode, rprev, k - 1, false)

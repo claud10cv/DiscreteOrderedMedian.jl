@@ -47,6 +47,6 @@ function generate_rand(n::Int64, p::Int64, itype::Symbol; seed::Int64 = 0)::DOMP
     elseif itype == :random
     end
     D = rand(rng, 10000 : 100000, n, n)
-    uD = unique(sort(vec(D)))
+    #uD = unique(sort(vec(D)))
     DOMPData(D, p, lambda, uD)
 end

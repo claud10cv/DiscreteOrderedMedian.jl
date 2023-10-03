@@ -1,4 +1,5 @@
 module DiscreteOrderedMedian
+
     using DataStructures
     using JuMP
     using MathOptInterface
