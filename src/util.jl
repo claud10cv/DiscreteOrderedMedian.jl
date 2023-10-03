@@ -311,9 +311,9 @@ end
 function score(data::DOMPData, k::Int64, d::Vector{Int64})::Int64
     nrows = size(data.D, 1)
     m = 1#abs(d[k] * data.lambda[k])
-    if k <= data.p return 0
-    elseif data.lambda[k] > 0 return m * (k - data.p + 1)
-    elseif data.lambda[k] < 0 return m * (nrows - k + 1)
-    else return 0
+    if k <= data.p return 1
+    elseif data.lambda[k] > 0 return m * (k - data.p + 1) + 1
+    elseif data.lambda[k] < 0 return m * (nrows - k + 1) + 1
+    else return 1
     end
 end
