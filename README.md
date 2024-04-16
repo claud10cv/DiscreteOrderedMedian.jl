@@ -1,12 +1,6 @@
 # DiscreteOrderedMedian.jl
 Branch-and-bound algorithm for the discrete ordered median problem
 
-## Installation
-From the REPL, execute the following line
-```julia
-julia> Pkg.add("https://github.com/claud10cv/DiscreteOrderedMedian.jl")
-```
-
 ## Basic Usage
 1. Read an instance from Deleplanque et al executing
 ```julia

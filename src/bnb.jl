@@ -1,4 +1,4 @@
-function bnb(data::DOMPData, params::Parameters = Parameters(); time_limit = 7200)::Result
+function bnb(data::DOMPData, params::Parameters = default_parameters())::Result
     println("ITERATION,BEST_BOUND,BKS,GAP(%),T(s),FRACT,BR_VAR,BR_VAL,DEPTH,NODES_LEFT")
     t0 = time_ns()
     nrows = size(data.D, 1)
@@ -37,7 +37,7 @@ function bnb(data::DOMPData, params::Parameters = Parameters(); time_limit = 720
     pseudocosts = zeros(ncols, 2)
     next_restart = 20
     nrestarts = 0
-    while !isempty(queue) && elapsed < time_limit
+    while !isempty(queue) && elapsed < params.time_limit
         bbnode = dequeue!(queue)
         global_lb = max(global_lb, bbnode.lb)
         global_xlb = bbnode.xlb
@@ -55,7 +55,7 @@ function bnb(data::DOMPData, params::Parameters = Parameters(); time_limit = 720
         # find the most fractional variable
         # val, j = find_most_fractional(bbnode.xlb...)
         # find the best branch by strong branching
-        branches = strong_branching(data, bbnode, global_ub, pseudocosts, bbnode.xlb...)
+        branches = strong_branching(data, params, bbnode, global_ub, pseudocosts, bbnode.xlb...)
         j = branches[1][1].i
         left_child = branches[1][2]
         right_child = branches[1][3]
@@ -65,13 +65,13 @@ function bnb(data::DOMPData, params::Parameters = Parameters(); time_limit = 720
             left_branch = deepcopy(bbnode.branches)
             push!(left_branch, BranchInfo(j, 'L', 0))
             left_child = BbNode(left_branch, 0, 0, ([], []), [], [Int64[] for k in 1 : nrows], deepcopy(bbnode.ropt))
-            domp_lb!(data, left_child, bbnode, global_xub)
+            domp_lb!(data, params, left_child, bbnode, global_xub)
         end
         if isnothing(right_child)
             right_branch = deepcopy(bbnode.branches)
             push!(right_branch, BranchInfo(j, 'G', 1))
             right_child = BbNode(right_branch, 0, 0, ([], []), [], [Int64[] for k in 1 : nrows], deepcopy(bbnode.ropt))
-            domp_lb!(data, right_child, bbnode, global_xub)
+            domp_lb!(data, params, right_child, bbnode, global_xub)
         end
         
         children = [left_child, right_child]
