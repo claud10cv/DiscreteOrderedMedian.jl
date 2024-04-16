@@ -39,9 +39,10 @@ struct Parameters
     var_fixing::Bool
     primal_heur::Bool
     symm_break::Bool
+    time_limit::Float64
 end
 
 BbNode() = BbNode(BranchInfo[], 0, typemax(Int64), (Float64[], Float64[]), Int64[], Vector{Vector{Int64}}(), Int64[])
 BbNode(branches::Vector{BranchInfo}) = BbNode(branches, 0, typemax(Int64), (Float64[], Float64[]), Int64[], Vector{Vector{Int64}}(), Int64[])
 
-Parameters() = Parameters(true, true, true, true)
+Parameters() = Parameters(true, true, true, true, 7200.0)

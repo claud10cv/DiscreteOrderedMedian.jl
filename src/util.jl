@@ -150,7 +150,7 @@ function find_index_uD(data::DOMPData, d::Int64)::Int64
     return l
 end
 
-function strong_branching(data::DOMPData, parent::BbNode, ub::Int64, pseudo::Matrix{Float64}, x::Vector{Float64}, z::Vector{Float64})::Vector{Tuple{PseudoCost, Union{Nothing, BbNode}, Union{Nothing, BbNode}}}
+function strong_branching(data::DOMPData, params::Parameters, parent::BbNode, ub::Int64, pseudo::Matrix{Float64}, x::Vector{Float64}, z::Vector{Float64})::Vector{Tuple{PseudoCost, Union{Nothing, BbNode}, Union{Nothing, BbNode}}}
     nrows = size(data.D, 1)
     ncols = size(data.D, 2)
     # println("branching with x = $([y for y in x if abs(y) > 1e-5])")
@@ -190,7 +190,7 @@ function strong_branching(data::DOMPData, parent::BbNode, ub::Int64, pseudo::Mat
                 push!(new_branch, b)
                 new_bbnode = BbNode(new_branch, 0, 0, ([], []), [], [Int64[] for k in 1 : nrows], new_ropt)
                 new_xub = deepcopy(parent.xub)
-                domp_lb!(data, new_bbnode, parent, new_xub)
+                domp_lb!(data, params, new_bbnode, parent, new_xub)
                 if b.sense == 'G'
                     rbound = new_bbnode.lb 
                 else
