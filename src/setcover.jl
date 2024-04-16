@@ -1,11 +1,11 @@
-function setcover(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector{Int64})::Vector{Int64}
+function setcover(params::Parameters, coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector{Int64})::Vector{Int64}
     nrows = size(coverage, 1)
     ncols = size(coverage, 2)
     if p < 0 return [] end
     if k <= 0 return collect(1 : min(p, ncols)) end
     result = setcover_localsearch(coverage, k, p, supp)
     if isempty(result)
-        result = setcover_exact(coverage, k, p, supp)
+        result = setcover_exact(params, coverage, k, p, supp)
     end
     return result
 end
@@ -38,17 +38,19 @@ function setcover_localsearch(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::
     end
 end
 
-function setcover_exact(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector{Int64})::Vector{Int64}
+function setcover_exact(params::Parameters, coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector{Int64})::Vector{Int64}
     nrows = size(coverage, 1)
     ncols = size(coverage, 2)
-    m = JuMP.direct_model(CPLEX.Optimizer())
-    set_optimizer_attributes(m, 
-        # "CPXPARAM_MIP_Tolerances_UpperCutoff" => p + 1e-5, 
-        # "CPXPARAM_MIP_Limits_LowerObjStop" => p + 1e-5,
-        "CPXPARAM_ScreenOutput" => 0,
-        "CPXPARAM_Threads" => 1,
-        "CPXPARAM_MIP_Tolerances_MIPGap" => 0.1,
-        "CPXPARAM_MIP_Limits_Solutions" => 1)
+    m = JuMP.direct_model(params.optimizer_data.optimizer())
+    params.optimizer_data.set_attributes(m, params.time_limit + 1, 1)
+    # m = JuMP.direct_model(CPLEX.Optimizer())
+    # set_optimizer_attributes(m, 
+    #     # "CPXPARAM_MIP_Tolerances_UpperCutoff" => p + 1e-5, 
+    #     # "CPXPARAM_MIP_Limits_LowerObjStop" => p + 1e-5,
+    #     "CPXPARAM_ScreenOutput" => 0,
+    #     "CPXPARAM_Threads" => 1,
+    #     "CPXPARAM_MIP_Tolerances_MIPGap" => 0.1,
+    #     "CPXPARAM_MIP_Limits_Solutions" => 1)
     # m = JuMP.Model(optimizer_with_attributes(Gurobi.Optimizer, 
     #     "Cutoff" => p + 1e-5, 
     #     "BestObjStop" => p + 1e-5,
@@ -67,7 +69,7 @@ function setcover_exact(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector
     @constraint(m, sum(y) >= k)
     @constraint(m, sum(x) <= p)
     optimize!(m)
-    if termination_status(m) != MOI.INFEASIBLE# && objective_bound(m) <= p + 1e-7
+    if has_values(m)#termination_status(m) != MOI.INFEASIBLE# && objective_bound(m) <= p + 1e-7
         xval = round.(Int64, value.(x))
         f = 1
         while f <= ncols && sum(xval) < p

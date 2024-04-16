@@ -92,7 +92,7 @@ function domp_lb!(data::DOMPData, params::Parameters, bbnode::BbNode, parent::Un
             end
             lbk = isnothing(parent) ? mind : parent.ropt[k]
             @assert(lbk <= valub, ("bounds inconsistent for lambda > 0, $k, $(lbk), $(valub), $xk, $dk"))
-            val, solk = dompk_pos(data, bbnode, k, lbk, valub, xubk, support)
+            val, solk = dompk_pos(data, params, bbnode, k, lbk, valub, xubk, support)
             if sum(solk) == 0
                 lock(lk) do
                     # println("fathoming node")
@@ -137,7 +137,7 @@ function domp_lb!(data::DOMPData, params::Parameters, bbnode::BbNode, parent::Un
             end
             ubk = isnothing(parent) ? maxd : parent.ropt[k]
             @assert(ubk >= vallb, ("bounds inconsistent for lambda < 0, $k, $(vallb), $(ubk), $xk, $dk"))
-            val, solk = dompk_neg(data, bbnode, k, vallb, ubk, xlbk, support)
+            val, solk = dompk_neg(data, params, bbnode, k, vallb, ubk, xlbk, support)
             if sum(solk) == 0
                 lock(lk) do
                     # println("fathoming node")

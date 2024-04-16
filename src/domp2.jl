@@ -1,4 +1,4 @@
-function domp2(data::DOMPData; time_limit = 7200)::Tuple{Float64, Int64, Vector{Int64}}
+function domp2(data::DOMPData, params::Parameters)::Tuple{Float64, Int64, Vector{Int64}}
     d = sort(unique(data.D))
     if d[1] != 0
         pushfirst!(d, 0)
@@ -6,12 +6,8 @@ function domp2(data::DOMPData; time_limit = 7200)::Tuple{Float64, Int64, Vector{
     nd = length(d)
     nrows = size(data.D, 1)
     ncols = size(data.D, 2)
-    m = JuMP.direct_model(CPLEX.Optimizer())
-    set_optimizer_attributes(m, 
-        # "CPXPARAM_ScreenOutput" => 0,
-        "CPXPARAM_TimeLimit" => time_limit,
-        "CPXPARAM_Threads" => 1,
-        "CPXPARAM_MIP_Tolerances_MIPGap" => 0.0)
+    m = JuMP.direct_model(params.optimizer_data.optimizer())
+    params.optimizer_data.set_attributes(m, params.time_limit, 100000000)
     @variable(m, x[1 : nrows, 1 : ncols], Bin)
     @variable(m, y[1 : ncols], Bin)
     @variable(m, u[1 : nrows, 1 : nd], Bin)

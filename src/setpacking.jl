@@ -1,4 +1,4 @@
-function setpacking(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector{Int64})::Vector{Int64}
+function setpacking(params::Parameters, coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector{Int64})::Vector{Int64}
     nrows = size(coverage, 1)
     ncols = size(coverage, 2)
     if k < 0 return [] end
@@ -6,7 +6,7 @@ function setpacking(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector{Int
     if p <= 0 return [1] end
     result = setpacking_localsearch(coverage, k, p, supp)
     if isempty(result)
-        result = setpacking_exact(coverage, k, p, supp)
+        result = setpacking_exact(params, coverage, k, p, supp)
     end
     return result
 end
@@ -39,20 +39,22 @@ function setpacking_localsearch(coverage::Matrix{Bool}, k::Int64, p::Int64, supp
     end
 end
 
-function setpacking_exact(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector{Int64})::Vector{Int64}
+function setpacking_exact(params::Parameters, coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vector{Int64})::Vector{Int64}
     nrows = size(coverage, 1)
     ncols = size(coverage, 2)
+    m = JuMP.direct_model(params.optimizer_data.optimizer())
+    params.optimizer_data.set_attributes(m, params.time_limit + 1, 1)
     # println("solving setpacking with k = $k, p = $p, nrows = $nrows, ncols = $ncols")
     # println("cov = $coverage")
     # println("constructing model")
-    m = JuMP.direct_model(CPLEX.Optimizer())
-    set_optimizer_attributes(m, 
-        # "CPXPARAM_MIP_Tolerances_LowerCutoff" => p - 1e-5, 
-        # "CPXPARAM_MIP_Limits_UpperObjStop" => p - 1e-5,
-        "CPXPARAM_ScreenOutput" => 0,
-        "CPXPARAM_Threads" => 1,
-        "CPXPARAM_MIP_Tolerances_MIPGap" => 0.1,
-        "CPXPARAM_MIP_Limits_Solutions" => 1)
+    # m = JuMP.direct_model(CPLEX.Optimizer())
+    # set_optimizer_attributes(m, 
+    #     # "CPXPARAM_MIP_Tolerances_LowerCutoff" => p - 1e-5, 
+    #     # "CPXPARAM_MIP_Limits_UpperObjStop" => p - 1e-5,
+    #     "CPXPARAM_ScreenOutput" => 0,
+    #     "CPXPARAM_Threads" => 1,
+    #     "CPXPARAM_MIP_Tolerances_MIPGap" => 0.1,
+    #     "CPXPARAM_MIP_Limits_Solutions" => 1)
     conflict = Vector{Vector{Int64}}()
     let    
         g = SimpleGraph(ncols)
@@ -110,7 +112,7 @@ function setpacking_exact(coverage::Matrix{Bool}, k::Int64, p::Int64, supp::Vect
     end
     optimize!(m)
     # println(termination_status(m))
-    if termination_status(m) != MOI.INFEASIBLE# && objective_bound(m) >= p - 1e-7
+    if has_values(m)#termination_status(m) != MOI.INFEASIBLE# && objective_bound(m) >= p - 1e-7
         # println("feasible setpacking")
         xval = round.(Int64, value.(x))
         yval = round.(Int64, value.(y))

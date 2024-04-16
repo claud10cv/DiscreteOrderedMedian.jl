@@ -1,4 +1,5 @@
 function dompk_pos(data::DOMPData, 
+                    params::Parameters,
                     bbnode::BbNode, 
                     k::Int64, 
                     lb::Int64, 
@@ -35,7 +36,7 @@ function dompk_pos(data::DOMPData,
         ridx = floor(Int64, (lbidx + ubidx) / 2)
         r = data.uD[ridx]
         cov, map, numcov = build_coverage(data, bbnode, r, k, true)
-        sol = setcover(cov, k - numcov, data.p - nopen, supp[map])
+        sol = setcover(params, cov, k - numcov, data.p - nopen, supp[map])
         if !isempty(sol)
             # println("feasible r = $r")
             ub = r
@@ -62,7 +63,7 @@ function dompk_pos(data::DOMPData,
     end
     if sum(y) == 0
         cov, map, numcov = build_coverage(data, bbnode, ub, k, true)
-        sol = setcover(cov, k - numcov, data.p - nopen, supp[map])
+        sol = setcover(params, cov, k - numcov, data.p - nopen, supp[map])
         if isempty(sol) return ub, zeros(Int64, ncols) end
         for j in 1 : ncols
             y[j] = 0
@@ -84,6 +85,7 @@ function dompk_pos(data::DOMPData,
 end
 
 function dompk_neg(data::DOMPData, 
+                    params::Parameters,
                     bbnode::BbNode, 
                     k::Int64, 
                     lb::Int64, 
@@ -122,7 +124,7 @@ function dompk_neg(data::DOMPData,
         rprev = ridx == 1 ? 0 : data.uD[ridx - 1]
         # println("lb = $lb, ub = $ub, r = $r")
         cov, map, numcov = build_coverage(data, bbnode, rprev, k - 1, false)
-        sol = setpacking(cov, k - 1 - numcov, data.p - nopen, supp[map])
+        sol = setpacking(params, cov, k - 1 - numcov, data.p - nopen, supp[map])
         if !isempty(sol)
             lbidx = ridx
             lb = r
@@ -141,7 +143,7 @@ function dompk_neg(data::DOMPData,
     end
     if sum(xlb) != data.p
         cov, map, numcov = build_coverage(data, bbnode, lb - 1, k - 1, false)
-        sol = setpacking(cov, k - 1 - numcov, data.p - nopen, supp[map])
+        sol = setpacking(params, cov, k - 1 - numcov, data.p - nopen, supp[map])
         if isempty(sol) return lb, zeros(Int64, ncols) end
         for j in 1 : ncols
             y[j] = 0

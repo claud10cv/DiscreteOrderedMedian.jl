@@ -34,15 +34,19 @@ struct Result
     xub::Vector{Int64}
 end
 
+struct OptimizerData
+    optimizer::DataType
+    set_attributes::Function
+end
+
 struct Parameters
     warm_starts::Bool
     var_fixing::Bool
     primal_heur::Bool
     symm_break::Bool
     time_limit::Float64
+    optimizer_data::OptimizerData
 end
 
 BbNode() = BbNode(BranchInfo[], 0, typemax(Int64), (Float64[], Float64[]), Int64[], Vector{Vector{Int64}}(), Int64[])
 BbNode(branches::Vector{BranchInfo}) = BbNode(branches, 0, typemax(Int64), (Float64[], Float64[]), Int64[], Vector{Vector{Int64}}(), Int64[])
-
-default_parameters() = Parameters(true, true, true, true, 7200.0)

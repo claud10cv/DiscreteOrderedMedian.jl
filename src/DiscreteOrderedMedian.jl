@@ -2,7 +2,7 @@ module DiscreteOrderedMedian
     using DataStructures
     using JuMP
     using MathOptInterface
-    using CPLEX
+    using GLPK
     using LinearAlgebra
     using Random
     using Graphs
@@ -10,6 +10,7 @@ module DiscreteOrderedMedian
 
     include("instancegen.jl")
     include("struct.jl")
+    include("optimizer.jl")
     include("reader.jl")
     include("localsearch.jl")
     include("util.jl")
