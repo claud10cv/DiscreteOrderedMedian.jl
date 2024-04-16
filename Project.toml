@@ -17,8 +17,13 @@ PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [compat]
-PrecompileTools = "1.2.1"
 julia = "1"
+PrecompileTools = "1.2.1"
+CPLEX = "1"
+DataStructures = "0.18"
+Graphs = "1"
+JuMP = "1.21"
+MathOptInterface = "1.28"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
