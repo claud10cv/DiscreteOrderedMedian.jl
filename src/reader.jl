@@ -71,6 +71,78 @@ function read_orlib(filename::String)::DOMPData
     DOMPData(D, p, rand(1 : 100, n), uD)
 end
 
+function read_beasley(filename::String)::DOMPData
+    p = n = 0
+    D = []
+    lambda = []
+    i = 0
+    open(filename) do f
+        line = readline(f)
+        # println(line)
+        tok = split(line, [' ', ':']; keepempty = false)
+        n = parse(Int64, tok[1])
+        p = parse(Int64, tok[2])
+        D = zeros(Int64, n, n)
+        lambda = zeros(Int64, n)
+        # println(D)
+        # println(n)
+        while !eof(f)
+            for i in 1 : n
+                ctok = split(readline(f); keepempty = false)
+                # println(ctok)
+                for k in 1 : n
+                    l = parse(Int64, ctok[k])
+                    # println(l)
+                    # println(i)
+                    # println(k)
+                    D[i, k] = l
+                    # println(D[i, k])
+                end
+            end
+              
+        end
+    end
+    uD = unique(sort(vec(D)))
+    # println(uD)
+    return DOMPData(D, p, lambda, uD)
+end
+
+function read_deleplanque_ns(filename::String)::DOMPData
+    p = n = 0
+    D = []
+    lambda = []
+    open(filename) do f
+        while !eof(f)
+            line = readline(f)
+            tok = split(line, [' ', ':']; keepempty = false)
+            if tok[1] == "OPEN_FACILITIES"
+                p = parse(Int64, tok[2])
+            elseif tok[1] == "DIMENSION"
+                n = parse(Int64, tok[2])
+                D = zeros(Int64, n, n)
+                lambda = zeros(Int64, n)
+            elseif tok[1] == "COST_SECTION"
+                for i in 1 : n
+                    ctok = split(readline(f); keepempty = false)
+                    for j in 1 : n
+                        D[i, j] = parse(Int64, ctok[j])
+                    end
+                end
+            elseif tok[1] == "LAMBDA_SECTION"
+                
+                ctok = split(readline(f); keepempty = false)
+                k = parse(Int64, ctok[1])
+                for i in 1 : n
+                    l = parse(Int64, ctok[i+1])
+                    lambda[i] = l
+                end
+            end
+        end
+    end
+    uD = unique(sort(vec(D)))
+    return DOMPData(D, p, lambda, uD)
+end
+
 function write_instance(data::DOMPData, filename::String)::Nothing
     name = split(filename, ['.', '/']; keepempty = false)[end - 1]
     nrows = size(data.D, 1)
