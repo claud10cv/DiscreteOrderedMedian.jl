@@ -29,11 +29,12 @@ module DiscreteOrderedMedian
                 data0 = DiscreteOrderedMedian.read_deleplanque(joinpath(home, "data", "domp20p5v1.domp"))
                 for lambda in [:T9, :T1, :T0]
                     data = DiscreteOrderedMedian.modify_lambda(data0, lambda)
-                    params = DiscreteOrderedMedian.Parameters()
+                    params = DiscreteOrderedMedian.default_parameters()
                     DiscreteOrderedMedian.bnb(data, params)
                 end
             end
         end
     end
     
+    export bnb, modify_lambda, read_deleplanque, read_orlib, default_parameters
 end # module

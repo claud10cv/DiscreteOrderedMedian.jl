@@ -1,4 +1,4 @@
-function bnb(data::DOMPData, params::Parameters = Parameters())::Result
+function bnb(data::DOMPData, params::Parameters = default_parameters())::Result
     println("ITERATION,BEST_BOUND,BKS,GAP(%),T(s),FRACT,BR_VAR,BR_VAL,DEPTH,NODES_LEFT")
     t0 = time_ns()
     nrows = size(data.D, 1)

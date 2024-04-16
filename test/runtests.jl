@@ -8,7 +8,7 @@ end
 function test_toy(seed::Int64, lambda::Symbol)::Bool
     data = DiscreteOrderedMedian.generate_euclidean(10, 5, 1000, 1000, :pmedian; seed = seed)
     data = DiscreteOrderedMedian.modify_lambda(data, lambda)
-    params = DiscreteOrderedMedian.Parameters()
+    params = DiscreteOrderedMedian.default_parameters()
     res = DiscreteOrderedMedian.bnb(data, params)
     return feasible_result(res)
 end
