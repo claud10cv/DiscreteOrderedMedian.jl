@@ -1,9 +1,8 @@
 name = "DiscreteOrderedMedian"
 uuid = "749eb255-e7f0-474c-bf5d-cdfd6b01954b"
-authors = [
-    {name = "Marilène Cherkesly", email = "cherkesly.marilene@uqam.ca"},
-    {name = "Claudio Contardo", email = "claudio.contardo@concordia.ca"},
-    {name = "Matthieu Gruson", email = "gruson.matthieu@uqam.ca"},
+authors = ["Marilène Cherkesly <cherkesly.marilene@uqam.ca>",
+    "Claudio Contardo <claudio.contardo@concordia.ca>",
+    "Matthieu Gruson <gruson.matthieu@uqam.ca>"
 ]
 version = "0.1.0"
 
