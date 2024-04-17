@@ -43,20 +43,6 @@ function setcover_exact(params::Parameters, coverage::Matrix{Bool}, k::Int64, p:
     ncols = size(coverage, 2)
     m = JuMP.direct_model(params.optimizer_data.optimizer())
     params.optimizer_data.set_attributes(m, params.time_limit + 1, 1)
-    # m = JuMP.direct_model(CPLEX.Optimizer())
-    # set_optimizer_attributes(m, 
-    #     # "CPXPARAM_MIP_Tolerances_UpperCutoff" => p + 1e-5, 
-    #     # "CPXPARAM_MIP_Limits_LowerObjStop" => p + 1e-5,
-    #     "CPXPARAM_ScreenOutput" => 0,
-    #     "CPXPARAM_Threads" => 1,
-    #     "CPXPARAM_MIP_Tolerances_MIPGap" => 0.1,
-    #     "CPXPARAM_MIP_Limits_Solutions" => 1)
-    # m = JuMP.Model(optimizer_with_attributes(Gurobi.Optimizer, 
-    #     "Cutoff" => p + 1e-5, 
-    #     "BestObjStop" => p + 1e-5,
-    #     "OutputFlag" => 0,
-    #     "Threads" => 1,
-    #     "SolutionLimit" => 1))
     @variable(m, x[1 : ncols], Bin)
     @variable(m, 0 <= y[1 : nrows] <= 1)
     nonempty_rows = [i for i in 1 : nrows if sum(@view coverage[i, :]) > 0]
@@ -78,7 +64,6 @@ function setcover_exact(params::Parameters, coverage::Matrix{Bool}, k::Int64, p:
         end
         return [i for i in 1 : ncols if xval[i] >= 1]
     else
-        # JuMP.write_to_file(m, "error.lp") 
         return Int64[]
     end
 end

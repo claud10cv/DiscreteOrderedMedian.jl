@@ -2,7 +2,7 @@ module DiscreteOrderedMedian
     using DataStructures
     using JuMP
     using MathOptInterface
-    using GLPK
+    using HiGHS
     using LinearAlgebra
     using Random
     using Graphs
@@ -37,5 +37,8 @@ module DiscreteOrderedMedian
         end
     end
     
-    export generate_euclidean, read_deleplanque, read_orlib, bnb, modify_lambda, default_parameters
+    export generate_euclidean, read_deleplanque, read_orlib
+    export bnb, modify_lambda
+    export default_parameters, default_parameters_with_optimizer_data
+    export glpk_optimizer_data, highs_optimizer_data, cplex_optimizer_data, gurobi_optimizer_data
 end # module
