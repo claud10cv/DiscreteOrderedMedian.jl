@@ -37,5 +37,5 @@ module DiscreteOrderedMedian
         end
     end
     
-    export bnb, modify_lambda, read_deleplanque, read_orlib, default_parameters
+    export generate_euclidean, read_deleplanque, read_orlib, bnb, modify_lambda, default_parameters
 end # module
