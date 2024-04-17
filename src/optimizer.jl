@@ -23,4 +23,15 @@ function gurobi_optimizer_data(opt)
     return OptimizerData(opt, attrs)
 end
 
-default_parameters() = Parameters(true, true, true, true, 7200.0, glpk_optimizer_data(GLPK.Optimizer))
+function highs_optimizer_data(opt)
+    attrs = (m, t, sl) -> set_optimizer_attributes(m, 
+                                            "output_flag" => false,
+                                            "threads" => 1,
+                                            "time_limit" => t,
+                                            "mip_rel_gap" => 0.0,
+                                            "mip_max_improving_sols" => sl)
+    return OptimizerData(opt, attrs)
+end
+
+default_parameters_with_optimizer_data(opt_data) = Parameters(true, true, true, true, 7200.0, opt_data)
+default_parameters() = default_parameters_with_optimizer_data(highs_optimizer_data(HiGHS.Optimizer))
