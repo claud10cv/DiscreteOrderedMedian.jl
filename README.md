@@ -2,7 +2,7 @@
 Branch-and-bound algorithm for the discrete ordered median problem
 
 ## Basic Usage
-1. Read an instance from Deleplanque et al executing
+1. Read an instance from Deleplanque et al, or any other data in a similar fashion, executing
 ```julia
 julia> data = DiscreteOrderedMedian.read_deleplanque(filename)
 ```
